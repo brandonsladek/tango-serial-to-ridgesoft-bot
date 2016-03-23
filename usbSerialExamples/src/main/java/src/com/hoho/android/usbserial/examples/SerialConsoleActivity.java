@@ -226,6 +226,11 @@ public class SerialConsoleActivity extends Activity {
                 + HexDump.dumpHexString(data) + "\n\n";
 
         // How about a method that parses the data to check for which character was passed in?
+        try {
+            sPort.write(data, 100);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         mDumpTextView.append(message);
         mScrollView.smoothScrollTo(0, mDumpTextView.getBottom());

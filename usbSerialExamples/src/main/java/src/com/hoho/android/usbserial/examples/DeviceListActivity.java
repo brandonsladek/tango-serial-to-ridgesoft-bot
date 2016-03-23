@@ -49,6 +49,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.HexDump;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -69,6 +70,8 @@ public class DeviceListActivity extends Activity {
 
     private Button forwardButton;
     private EditText editText;
+
+    private UsbSerialPort usbPort;
 
     private static final int MESSAGE_REFRESH = 101;
     private static final long REFRESH_TIMEOUT_MILLIS = 5000;
@@ -143,6 +146,7 @@ public class DeviceListActivity extends Activity {
                 }
 
                 final UsbSerialPort port = mEntries.get(position);
+                usbPort = port;
                 showConsoleActivity(port);
             }
         });
@@ -154,7 +158,12 @@ public class DeviceListActivity extends Activity {
         forwardButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                editText.setText(new Date().toString());
+                //editText.setText(new Date().toString());
+                try {
+                    usbPort.write(new byte[]{'f'}, 100);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
     }
