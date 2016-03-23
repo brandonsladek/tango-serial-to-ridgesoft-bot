@@ -17,4 +17,7 @@
     
     <!-- 0x067B / 0x2303: Prolific PL2303 -->
     <usb-device vendor-id="1659" product-id="8963" />
+
+    <!-- Tango -->
+    <usb-device vendor-id="1659" product-id="8963" />
 </resources>

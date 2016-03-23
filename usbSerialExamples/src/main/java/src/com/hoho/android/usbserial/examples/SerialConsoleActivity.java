@@ -19,7 +19,7 @@
  * Project home page: https://github.com/mik3y/usb-serial-for-android
  */
 
-package com.hoho.android.usbserial.examples;
+package src.com.hoho.android.usbserial.examples;
 
 import android.app.Activity;
 import android.content.Context;
@@ -27,15 +27,21 @@ import android.content.Intent;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
+import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import android.widget.Button;
+import android.widget.EditText;
 
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.util.HexDump;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -65,6 +71,12 @@ public class SerialConsoleActivity extends Activity {
     private TextView mDumpTextView;
     private ScrollView mScrollView;
 
+    private Button forwardButton;
+    private Button backButton;
+    private Button leftButton;
+    private Button rightButton;
+    private Button stopButton;
+
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
     private SerialInputOutputManager mSerialIoManager;
@@ -79,10 +91,12 @@ public class SerialConsoleActivity extends Activity {
 
         @Override
         public void onNewData(final byte[] data) {
+            // This should be fired off every time the Tango sends data
             SerialConsoleActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     SerialConsoleActivity.this.updateReceivedData(data);
+                    Log.d(TAG, "updateReceivedData called!");
                 }
             });
         }
@@ -95,6 +109,44 @@ public class SerialConsoleActivity extends Activity {
         mTitleTextView = (TextView) findViewById(R.id.demoTitle);
         mDumpTextView = (TextView) findViewById(R.id.consoleText);
         mScrollView = (ScrollView) findViewById(R.id.demoScroller);
+
+        forwardButton = (Button) findViewById(R.id.forwardButton);
+        backButton = (Button) findViewById(R.id.backButton);
+        leftButton = (Button) findViewById(R.id.leftButton);
+        rightButton = (Button) findViewById(R.id.rightButton);
+        stopButton = (Button) findViewById(R.id.stopButton);
+
+        forwardButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SerialConsoleActivity.this.updateReceivedData(new byte[]{'f'});
+            }
+        });
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SerialConsoleActivity.this.updateReceivedData(new byte[]{'b'});
+            }
+        });
+        leftButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SerialConsoleActivity.this.updateReceivedData(new byte[]{'l'});
+            }
+        });
+        rightButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SerialConsoleActivity.this.updateReceivedData(new byte[]{'r'});
+            }
+        });
+        stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SerialConsoleActivity.this.updateReceivedData(new byte[]{'s'});
+            }
+        });
+
     }
 
     @Override
@@ -129,6 +181,7 @@ public class SerialConsoleActivity extends Activity {
 
             try {
                 sPort.open(connection);
+                // Set parameters specific to Tango tablet
                 sPort.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
             } catch (IOException e) {
                 Log.e(TAG, "Error setting up device: " + e.getMessage(), e);
@@ -167,9 +220,13 @@ public class SerialConsoleActivity extends Activity {
         startIoManager();
     }
 
+    // This is the method that dumps data to screen
     private void updateReceivedData(byte[] data) {
         final String message = "Read " + data.length + " bytes: \n"
                 + HexDump.dumpHexString(data) + "\n\n";
+
+        // How about a method that parses the data to check for which character was passed in?
+
         mDumpTextView.append(message);
         mScrollView.smoothScrollTo(0, mDumpTextView.getBottom());
     }
@@ -178,7 +235,7 @@ public class SerialConsoleActivity extends Activity {
      * Starts the activity, using the supplied driver instance.
      *
      * @param context
-     * @param driver
+     * @param port
      */
     static void show(Context context, UsbSerialPort port) {
         sPort = port;
@@ -188,3 +245,5 @@ public class SerialConsoleActivity extends Activity {
     }
 
 }
+
+

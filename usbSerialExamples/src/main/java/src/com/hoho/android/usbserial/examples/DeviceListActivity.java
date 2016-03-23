@@ -19,7 +19,7 @@
  * Project home page: https://github.com/mik3y/usb-serial-for-android
  */
 
-package com.hoho.android.usbserial.examples;
+package src.com.hoho.android.usbserial.examples;
 
 import android.app.Activity;
 import android.content.Context;
@@ -30,12 +30,15 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -47,6 +50,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.HexDump;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -62,6 +66,9 @@ public class DeviceListActivity extends Activity {
     private ListView mListView;
     private TextView mProgressBarTitle;
     private ProgressBar mProgressBar;
+
+    private Button forwardButton;
+    private EditText editText;
 
     private static final int MESSAGE_REFRESH = 101;
     private static final long REFRESH_TIMEOUT_MILLIS = 5000;
@@ -137,6 +144,17 @@ public class DeviceListActivity extends Activity {
 
                 final UsbSerialPort port = mEntries.get(position);
                 showConsoleActivity(port);
+            }
+        });
+
+        forwardButton = (Button) findViewById(R.id.forwardButton);
+        editText = (EditText) findViewById(R.id.editText);
+        editText.setInputType(InputType.TYPE_NULL);
+
+        forwardButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                editText.setText(new Date().toString());
             }
         });
     }
