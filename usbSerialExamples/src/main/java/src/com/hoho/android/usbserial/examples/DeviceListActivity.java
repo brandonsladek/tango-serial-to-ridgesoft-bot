@@ -68,11 +68,6 @@ public class DeviceListActivity extends Activity {
     private TextView mProgressBarTitle;
     private ProgressBar mProgressBar;
 
-    private Button forwardButton;
-    private EditText editText;
-
-    private UsbSerialPort usbPort;
-
     private static final int MESSAGE_REFRESH = 101;
     private static final long REFRESH_TIMEOUT_MILLIS = 5000;
 
@@ -146,26 +141,10 @@ public class DeviceListActivity extends Activity {
                 }
 
                 final UsbSerialPort port = mEntries.get(position);
-                usbPort = port;
                 showConsoleActivity(port);
             }
         });
 
-        forwardButton = (Button) findViewById(R.id.forwardButton);
-        editText = (EditText) findViewById(R.id.editText);
-        editText.setInputType(InputType.TYPE_NULL);
-
-        forwardButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //editText.setText(new Date().toString());
-                try {
-                    usbPort.write(new byte[]{'f'}, 100);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
     }
 
     @Override

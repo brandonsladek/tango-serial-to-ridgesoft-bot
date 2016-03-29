@@ -1,1 +1,2 @@
+include ':tangoserialapplication'
 include 'usbSerialForAndroid', 'usbSerialExamples'
