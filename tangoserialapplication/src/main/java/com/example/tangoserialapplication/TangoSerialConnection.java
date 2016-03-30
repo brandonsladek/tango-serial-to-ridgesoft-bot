@@ -27,7 +27,7 @@ public class TangoSerialConnection {
 
         List<UsbSerialDriver> availableDrivers =  UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
 
-        // Open a connection to the first available driver.
+        // Set driver to Tango
         for (UsbSerialDriver usd : availableDrivers) {
             UsbDevice udv = usd.getDevice();
             if (udv.getVendorId()==1659 || udv.getProductId()==8963){
