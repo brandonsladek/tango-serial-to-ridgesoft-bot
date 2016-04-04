@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private TangoConfig mConfig;
 
     private TangoSerialConnection tsConn;
+    private NavigationLogic navigationLogic;
 
     private static final double UPDATE_INTERVAL_MS = 100.0;
     private static final int SECS_TO_MILLISECS = 1000;
@@ -93,6 +94,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 tsConn = new TangoSerialConnection(mainActivity);
+                messagesTextView.setText("Connection successful!");
+
+                navigationLogic = new NavigationLogic(tsConn);
             }
         });
 
