@@ -12,18 +12,11 @@
     tools:context="com.example.tangoserialapplication.MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        android:id="@+id/textView" />
-
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Connect"
         android:id="@+id/connectButton"
-        android:layout_below="@+id/textView"
         android:layout_centerHorizontal="true"
         android:enabled="true"
         android:contextClickable="true"
@@ -32,8 +25,8 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Forward"
-        android:id="@+id/forwardButton"
+        android:text="Stop"
+        android:id="@+id/stopButton"
         android:layout_below="@+id/connectButton"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="70dp" />
@@ -42,8 +35,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Messages"
-        android:id="@+id/messagesTextView"
+        android:text="Pose Data"
+        android:id="@+id/poseDataTextView"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="69dp" />
@@ -55,5 +48,45 @@
     android:id="@+id/startButton"
     android:layout_centerVertical="true"
     android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connection Status"
+        android:id="@+id/connectionTextView"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Back"
+        android:id="@+id/backButton"
+        android:layout_below="@+id/stopButton"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Right"
+        android:id="@+id/button2"
+        android:layout_alignTop="@+id/stopButton"
+        android:layout_toEndOf="@+id/poseDataTextView" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Forward"
+        android:id="@+id/forwardButton"
+        android:layout_above="@+id/button2"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Left"
+        android:id="@+id/leftButton"
+        android:layout_below="@+id/forwardButton"
+        android:layout_toStartOf="@+id/poseDataTextView" />
 
 </RelativeLayout>

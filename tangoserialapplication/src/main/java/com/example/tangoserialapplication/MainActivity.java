@@ -1,8 +1,6 @@
 package com.example.tangoserialapplication;
 
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
@@ -33,39 +31,29 @@ public class MainActivity extends AppCompatActivity {
     private TangoSerialConnection tsConn;
     private NavigationLogic navigationLogic;
 
-    private static final double UPDATE_INTERVAL_MS = 100.0;
-    private static final int SECS_TO_MILLISECS = 1000;
-
     private Button connectButton;
     private Button forwardButton;
     private Button startButton;
-    private TextView messagesTextView;
+    private TextView connectionTextView;
+    private TextView poseDataTextView;
+
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = false;
     private boolean mIsConstantSpaceRelocalize = true;
-    private TangoPoseData[] mPoses;
+    private TangoPoseData currentPose;
 
-    private int mStart2DevicePoseCount;
-    private int mAdf2DevicePoseCount;
-    private int mAdf2StartPoseCount;
-    private int mStart2DevicePreviousPoseStatus;
-    private int mAdf2DevicePreviousPoseStatus;
-    private int mAdf2StartPreviousPoseStatus;
+    private float[] rotationFloats;
 
-    private double mStart2DevicePoseDelta;
-    private double mAdf2DevicePoseDelta;
-    private double mAdf2StartPoseDelta;
-    private double mStart2DevicePreviousPoseTimeStamp;
-    private double mAdf2DevicePreviousPoseTimeStamp;
-    private double mAdf2StartPreviousPoseTimeStamp;
-
-    private double mPreviousPoseTimeStamp;
-    private double mTimeToNextUpdate = UPDATE_INTERVAL_MS;
+    float x;
+    float y;
+    float z;
+    float w;
 
     private final Object mSharedLock = new Object();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -81,6 +69,10 @@ public class MainActivity extends AppCompatActivity {
                 Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE),
                 Tango.TANGO_INTENT_ACTIVITYCODE);
 
+        while (!Tango.hasPermission(this, Tango.PERMISSIONTYPE_ADF_LOAD_SAVE)) {
+            // do nothing until permission granted...
+        }
+
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
 
@@ -88,15 +80,18 @@ public class MainActivity extends AppCompatActivity {
         connectButton = (Button) findViewById(R.id.connectButton);
         forwardButton = (Button) findViewById(R.id.forwardButton);
         startButton = (Button) findViewById(R.id.startButton);
-        messagesTextView = (TextView) findViewById(R.id.messagesTextView);
+        poseDataTextView = (TextView) findViewById(R.id.poseDataTextView);
+        connectionTextView = (TextView) findViewById(R.id.connectionTextView);
+
+        connectionTextView.setText("Not connected...");
 
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tsConn = new TangoSerialConnection(mainActivity);
-                messagesTextView.setText("Connection successful!");
+                connectionTextView.setText("Connection successful!");
 
-                navigationLogic = new NavigationLogic(tsConn);
+                navigationLogic = new NavigationLogic(tsConn, mainActivity);
             }
         });
 
@@ -111,44 +106,58 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 // start analyzing pose updates and sending serial output
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        while (true) {
+                            navigationLogic.navigate(currentPose);
+                        }
+                    }
+                };
             }
         });
 
     }
 
-    // All of the methods below this point are from the Google Project Tango area learning tutorialg
+    // All of the methods below this point are from the Google Project Tango area learning tutorials
+    // Some of the methods are modified.
 
     /**
      * Sets up the tango configuration object. Make sure mTango object is initialized before
      * making this call.
      */
     private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
+
         TangoConfig config = new TangoConfig();
         config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
+
         // Check if learning mode
         if (isLearningMode) {
             // Set learning mode to config.
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
 
         }
+
         // Check for Load ADF/Constant Space relocalization mode
         if (isLoadAdf) {
             ArrayList<String> fullUUIDList = new ArrayList<String>();
+
             // Returns a list of ADFs with their UUIDs
             fullUUIDList = tango.listAreaDescriptions();
-            // Load the latest ADF if ADFs are found.
+
+            // Load the ADF named bestAdf
             if (fullUUIDList.size() > 0) {
-//                for (int i = 0; i < fullUUIDList.size(); i++) {
-//                    String uuid = fullUUIDList.get(i);
-//                    String name = getName(uuid);
-//                    if (name != null) {
-//                        if (name.equals("bestAdf")) {
-//                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
-//                        }
-//                    }
-//                }
-                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-                        fullUUIDList.get(fullUUIDList.size()-1));
+                for (int i = 0; i < fullUUIDList.size(); i++) {
+                    String uuid = fullUUIDList.get(i);
+                    String name = getName(uuid);
+                    if (name != null) {
+                        if (name.equals("bestAdf")) {
+                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
+                        }
+                    }
+                }
+//                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+//                        fullUUIDList.get(fullUUIDList.size()-1));
             }
         }
         return config;
@@ -172,10 +181,11 @@ public class MainActivity extends AppCompatActivity {
      * Initializes pose data we keep track of. To be done
      */
     private void initializePoseData() {
-        mPoses = new TangoPoseData[3];
-        mStart2DevicePoseCount = 0;
-        mAdf2DevicePoseCount = 0;
-        mAdf2StartPoseCount = 0;
+        currentPose = new TangoPoseData();
+    }
+
+    public TangoPoseData getCurrentPose() {
+        return currentPose;
     }
 
     /**
@@ -215,62 +225,32 @@ public class MainActivity extends AppCompatActivity {
                 // UI loop doesn't interfere while Pose call back is updating
                 // the data.
                 synchronized (mSharedLock) {
-                    // Check for Device wrt ADF pose, Device wrt Start of Service pose,
-                    // Start of Service wrt ADF pose(This pose determines if device
-                    // the is relocalized or not).
-                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
-                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
-                        mPoses[0] = pose;
-                        if (mAdf2DevicePreviousPoseStatus != pose.statusCode) {
-                            // Set the count to zero when status code changes.
-                            mAdf2DevicePoseCount = 0;
-                        }
-                        mAdf2DevicePreviousPoseStatus = pose.statusCode;
-                        mAdf2DevicePoseCount++;
-                        // Calculate time difference between current and last available Device wrt
-                        // ADF pose.
-                        mAdf2DevicePoseDelta = (pose.timestamp - mAdf2DevicePreviousPoseTimeStamp)
-                                * SECS_TO_MILLISECS;
-                        mAdf2DevicePreviousPoseTimeStamp = pose.timestamp;
+                    currentPose = pose;
+                    rotationFloats = currentPose.getRotationAsFloats();
+                    x = rotationFloats[0];
+                    y = rotationFloats[1];
+                    z = rotationFloats[2];
+                    w = rotationFloats[3];
+                }
 
-                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
-                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
-                        mPoses[1] = pose;
-                        if (mStart2DevicePreviousPoseStatus != pose.statusCode) {
-                            // Set the count to zero when status code changes.
-                            mStart2DevicePoseCount = 0;
-                        }
-                        mStart2DevicePreviousPoseStatus = pose.statusCode;
-                        mStart2DevicePoseCount++;
-                        // Calculate time difference between current and last available Device wrt
-                        // SS pose.
-                        mStart2DevicePoseDelta = (pose.timestamp - mStart2DevicePreviousPoseTimeStamp)
-                                * SECS_TO_MILLISECS;
-                        mStart2DevicePreviousPoseTimeStamp = pose.timestamp;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (currentPose != null) {
 
-                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
-                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
-                        mPoses[2] = pose;
-                        if (mAdf2StartPreviousPoseStatus != pose.statusCode) {
-                            // Set the count to zero when status code changes.
-                            mAdf2StartPoseCount = 0;
-                        }
-                        mAdf2StartPreviousPoseStatus = pose.statusCode;
-                        mAdf2StartPoseCount++;
-                        // Calculate time difference between current and last available SS wrt ADF
-                        // pose.
-                        mAdf2StartPoseDelta = (pose.timestamp - mAdf2StartPreviousPoseTimeStamp)
-                                * SECS_TO_MILLISECS;
-                        mAdf2StartPreviousPoseTimeStamp = pose.timestamp;
-                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
-                            mIsRelocalized = true;
-                            // Set the color to green
-                        } else {
-                            mIsRelocalized = false;
-                            // Set the color blue
+                            double xPos = currentPose.translation[0];
+                            double yPos = currentPose.translation[1];
+                            //double rotation = currentPose.rotation[1];
+
+                            String poseString = "X position: " +  round(xPos) +
+                                    "\nY position: " + round(yPos) +
+                                    "\nRotation: " + getPoseRotationDegrees();
+
+                            poseDataTextView.setText(poseString);
                         }
                     }
-                }
+                });
+
             }
 
             @Override
@@ -280,12 +260,42 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public float getPoseRotationDegrees() {
+
+        float t = y*x+z*w;
+        int pole;
+        float rollRadians;
+
+        if (t > 0.499f) {
+            pole = 1;
+        } else if (t < -0.499f) {
+            pole = -1;
+        } else {
+            pole = 0;
+        }
+
+        if (pole == 0) {
+            rollRadians = (float) Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
+        } else {
+            rollRadians = pole * 2f * (float) Math.atan2(y, w);
+        }
+
+        // 0 - 360
+        return (float) Math.toDegrees(rollRadians) + 180;
+    }
+
+    private double round(double number) {
+        double newNumber = number * 100;
+        int newInt = (int) newNumber;
+        return newInt / 100.0;
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
 
         // Reset pose data and start counting from resume.
-        initializePoseData();
+        //initializePoseData();
 
         // Clear the relocalization state: we don't know where the device has been since our app was paused.
         mIsRelocalized = false;
