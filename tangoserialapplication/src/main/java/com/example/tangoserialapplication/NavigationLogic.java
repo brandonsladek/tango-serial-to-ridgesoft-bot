@@ -11,7 +11,7 @@ public class NavigationLogic {
     private TangoSerialConnection tsConn;
     private MainActivity mainActivity;
 
-    private double[] hardcodedLocation = new double[]{4.0, 5.0, 1.0};
+    private double[] hardcodedLocation = new double[]{-3.0, 4.0, 1.0};
 
     // Constructor
     public NavigationLogic(TangoSerialConnection tsConn, MainActivity mainActivity) {
@@ -22,9 +22,9 @@ public class NavigationLogic {
     public double getDistance(double[] ourLocation, double[] goLocation) {
 
         double xDiff = Math.abs(ourLocation[0] - goLocation[0]);
-        double zDiff = Math.abs(ourLocation[2] - goLocation[2]);
+        double yDiff = Math.abs(ourLocation[1] - goLocation[1]);
 
-        double sumOfSquares = Math.pow(xDiff, 2) + Math.pow(zDiff, 2);
+        double sumOfSquares = Math.pow(xDiff, 2) + Math.pow(yDiff, 2);
 
         double distance = Math.sqrt(sumOfSquares);
 
@@ -33,7 +33,6 @@ public class NavigationLogic {
 
     public void navigate(TangoPoseData poseData) {
 
-        //TangoPoseData ourPose = mainActivity.getCurrentPose();
         double[] ourLocation = poseData.translation;
         double[] rotationInfo = poseData.rotation;
         double ourRotation = rotationInfo[1];
@@ -42,20 +41,18 @@ public class NavigationLogic {
         double ourY = ourLocation[1];
         double ourZ = ourLocation[2];
 
-        double currentDistance = getDistance(ourLocation, hardcodedLocation);
-
         float radiusDiff = 2.0f;
         float xDiff = (float) (radiusDiff * Math.cos (45.0));
-        float zDiff = (float) (radiusDiff * Math.sin (45.0));
+        float yDiff = (float) (radiusDiff * Math.sin (45.0));
 
         double[] north = new double[]{ourX, ourY, ourZ + radiusDiff};
-        double[] northEast = new double[]{ourX + xDiff, ourY, ourZ + zDiff};
+        double[] northEast = new double[]{ourX + xDiff, ourY, ourZ + yDiff};
         double[] east = new double[]{ourX + radiusDiff, ourY, ourZ};
-        double[] southEast = new double[]{ourX + xDiff, ourY, ourZ - zDiff};
+        double[] southEast = new double[]{ourX + xDiff, ourY, ourZ - yDiff};
         double[] south = new double[]{ourX, ourY, ourZ - radiusDiff};
-        double[] southWest = new double[]{ourX - xDiff, ourY, ourZ - zDiff};
+        double[] southWest = new double[]{ourX - xDiff, ourY, ourZ - yDiff};
         double[] west = new double[]{ourX - radiusDiff, ourY, ourZ};
-        double[] northWest = new double[]{ourX - xDiff, ourY, ourZ + zDiff};
+        double[] northWest = new double[]{ourX - xDiff, ourY, ourZ + yDiff};
 
         double[] distances = new double[8];
 
@@ -88,8 +85,9 @@ public class NavigationLogic {
         }
 
         double goRotation = convertIndexToYRotationValue (indexWithMinimumDistance);
+        double currentDistance = getDistance(ourLocation, hardcodedLocation);
 
-        outputDirectionCommand(ourRotation, goRotation);
+        outputDirectionCommand(ourRotation, goRotation, currentDistance);
     }
 
     public double convertIndexToYRotationValue(int index) {
@@ -115,26 +113,32 @@ public class NavigationLogic {
         }
     }
 
-    public void outputDirectionCommand(double ourRotation, double goRotation) {
-        if (ourRotation < goRotation + 15 && ourRotation > goRotation - 15) {
-            // Tell the robot to go forward
-            tsConn.handleMessage('f');
+    public void outputDirectionCommand(double ourRotation, double goRotation, double distance) {
+
+        if (distance < 0.5) {
+            // Tell the robot to stop
+            tsConn.handleMessage('s');
         } else {
-            if (ourRotation < goRotation) {
-                double diff = goRotation - ourRotation;
-                if (diff <= 180) {
-                    // Tell the robot to turn right
-                    tsConn.handleMessage('r');
-                } else {
-                    // Tell the robot to turn left
-                    tsConn.handleMessage('l');
-                }
+            if (ourRotation < goRotation + 15 && ourRotation > goRotation - 15) {
+                // Tell the robot to go forward
+                tsConn.handleMessage('f');
             } else {
-                double diff = ourRotation - goRotation;
-                if (diff <= 180) {
-                    tsConn.handleMessage('l');
+                if (ourRotation < goRotation) {
+                    double diff = goRotation - ourRotation;
+                    if (diff <= 180) {
+                        // Tell the robot to turn right
+                        tsConn.handleMessage('r');
+                    } else {
+                        // Tell the robot to turn left
+                        tsConn.handleMessage('l');
+                    }
                 } else {
-                    tsConn.handleMessage('r');
+                    double diff = ourRotation - goRotation;
+                    if (diff <= 180) {
+                        tsConn.handleMessage('l');
+                    } else {
+                        tsConn.handleMessage('r');
+                    }
                 }
             }
         }

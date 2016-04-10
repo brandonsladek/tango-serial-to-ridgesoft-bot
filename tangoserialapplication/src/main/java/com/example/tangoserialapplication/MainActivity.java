@@ -32,8 +32,14 @@ public class MainActivity extends AppCompatActivity {
     private NavigationLogic navigationLogic;
 
     private Button connectButton;
-    private Button forwardButton;
     private Button startButton;
+
+    private Button forwardButton;
+    private Button backButton;
+    private Button leftButton;
+    private Button rightButton;
+    private Button stopButton;
+
     private TextView connectionTextView;
     private TextView poseDataTextView;
 
@@ -78,8 +84,14 @@ public class MainActivity extends AppCompatActivity {
 
         // Buttons and text views!
         connectButton = (Button) findViewById(R.id.connectButton);
-        forwardButton = (Button) findViewById(R.id.forwardButton);
         startButton = (Button) findViewById(R.id.startButton);
+
+        forwardButton = (Button) findViewById(R.id.forwardButton);
+        backButton = (Button) findViewById(R.id.backButton);
+        leftButton = (Button) findViewById(R.id.leftButton);
+        rightButton = (Button) findViewById(R.id.rightButton);
+        stopButton = (Button) findViewById(R.id.stopButton);
+
         poseDataTextView = (TextView) findViewById(R.id.poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.connectionTextView);
 
@@ -101,19 +113,46 @@ public class MainActivity extends AppCompatActivity {
                 tsConn.handleMessage('f');
             }
         });
+        backButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tsConn.handleMessage('b');
+            }
+        });
+        leftButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tsConn.handleMessage('l');
+            }
+        });
+        rightButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tsConn.handleMessage('r');
+            }
+        });
+        stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tsConn.handleMessage('s');
+            }
+        });
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // start analyzing pose updates and sending serial output
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        while (true) {
-                            navigationLogic.navigate(currentPose);
-                        }
-                    }
-                };
+//                new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        while (true) {
+//                            navigationLogic.navigate(currentPose);
+//                        }
+//                    }
+//                };
+                while(true) {
+                    navigationLogic.navigate(currentPose);
+                }
             }
         });
 
@@ -147,17 +186,17 @@ public class MainActivity extends AppCompatActivity {
 
             // Load the ADF named bestAdf
             if (fullUUIDList.size() > 0) {
-                for (int i = 0; i < fullUUIDList.size(); i++) {
-                    String uuid = fullUUIDList.get(i);
-                    String name = getName(uuid);
-                    if (name != null) {
-                        if (name.equals("bestAdf")) {
-                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
-                        }
-                    }
-                }
-//                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-//                        fullUUIDList.get(fullUUIDList.size()-1));
+//                for (int i = 0; i < fullUUIDList.size(); i++) {
+//                    String uuid = fullUUIDList.get(i);
+//                    String name = getName(uuid);
+//                    if (name != null) {
+//                        if (name.equals("bestAdf")) {
+//                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
+//                        }
+//                    }
+//                }
+                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                        fullUUIDList.get(fullUUIDList.size()-1));
             }
         }
         return config;
@@ -244,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
 
                             String poseString = "X position: " +  round(xPos) +
                                     "\nY position: " + round(yPos) +
-                                    "\nRotation: " + getPoseRotationDegrees();
+                                    "\nRotation: " + (int) getPoseRotationDegrees();
 
                             poseDataTextView.setText(poseString);
                         }
