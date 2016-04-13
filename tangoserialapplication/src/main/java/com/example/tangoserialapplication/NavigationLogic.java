@@ -33,9 +33,10 @@ public class NavigationLogic {
 
     public void navigate(TangoPoseData poseData) {
 
+        //TangoPoseData poseData = mainActivity.getCurrentPose();
         double[] ourLocation = poseData.translation;
-        double[] rotationInfo = poseData.rotation;
-        double ourRotation = rotationInfo[1];
+        //double[] rotationInfo = poseData.rotation;
+        double ourRotation = mainActivity.getPoseRotationDegrees();
 
         double ourX = ourLocation[0];
         double ourY = ourLocation[1];
@@ -45,14 +46,14 @@ public class NavigationLogic {
         float xDiff = (float) (radiusDiff * Math.cos (45.0));
         float yDiff = (float) (radiusDiff * Math.sin (45.0));
 
-        double[] north = new double[]{ourX, ourY, ourZ + radiusDiff};
-        double[] northEast = new double[]{ourX + xDiff, ourY, ourZ + yDiff};
+        double[] north = new double[]{ourX, ourY + radiusDiff, ourZ};
+        double[] northEast = new double[]{ourX + xDiff, ourY + yDiff, ourZ};
         double[] east = new double[]{ourX + radiusDiff, ourY, ourZ};
-        double[] southEast = new double[]{ourX + xDiff, ourY, ourZ - yDiff};
-        double[] south = new double[]{ourX, ourY, ourZ - radiusDiff};
-        double[] southWest = new double[]{ourX - xDiff, ourY, ourZ - yDiff};
+        double[] southEast = new double[]{ourX + xDiff, ourY - yDiff, ourZ};
+        double[] south = new double[]{ourX, ourY - radiusDiff, ourZ};
+        double[] southWest = new double[]{ourX - xDiff, ourY - yDiff, ourZ};
         double[] west = new double[]{ourX - radiusDiff, ourY, ourZ};
-        double[] northWest = new double[]{ourX - xDiff, ourY, ourZ + yDiff};
+        double[] northWest = new double[]{ourX - xDiff, ourY + yDiff, ourZ};
 
         double[] distances = new double[8];
 

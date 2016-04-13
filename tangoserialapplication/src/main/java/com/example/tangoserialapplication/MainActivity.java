@@ -1,5 +1,6 @@
 package com.example.tangoserialapplication;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -150,9 +151,15 @@ public class MainActivity extends AppCompatActivity {
 //                        }
 //                    }
 //                };
-                while(true) {
-                    navigationLogic.navigate(currentPose);
-                }
+
+                // Start new intent in new GUI
+//                Intent navigationIntent = new Intent(MainActivity.this, NavigationActivity.class);
+//                MainActivity.this.startActivity(navigationIntent);
+
+//                while(true) {
+//                    TangoPoseData pose = getCurrentPose();
+//                    navigationLogic.navigate(pose);
+//                }
             }
         });
 
@@ -289,6 +296,10 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
+
+                if (navigationLogic != null) {
+                    navigationLogic.navigate(currentPose);
+                }
 
             }
 
