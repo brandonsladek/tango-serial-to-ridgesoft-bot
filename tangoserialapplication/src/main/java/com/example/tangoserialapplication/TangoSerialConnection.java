@@ -10,12 +10,13 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Created by brandonsladek on 3/28/16.
  */
-public class TangoSerialConnection {
+public class TangoSerialConnection implements Serializable {
 
     private UsbManager usbManager = null;
     private UsbDeviceConnection connection = null;

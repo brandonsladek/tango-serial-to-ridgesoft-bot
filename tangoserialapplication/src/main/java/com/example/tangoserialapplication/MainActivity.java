@@ -32,14 +32,11 @@ public class MainActivity extends AppCompatActivity {
     private TangoSerialConnection tsConn;
     private NavigationLogic navigationLogic;
 
+    private Button manualControlButton;
+    private Button autonomousControlButton;
+
     private Button connectButton;
     private Button startButton;
-
-    private Button forwardButton;
-    private Button backButton;
-    private Button leftButton;
-    private Button rightButton;
-    private Button stopButton;
 
     private TextView connectionTextView;
     private TextView poseDataTextView;
@@ -85,14 +82,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Buttons and text views!
         connectButton = (Button) findViewById(R.id.connectButton);
-        startButton = (Button) findViewById(R.id.startButton);
-
-        forwardButton = (Button) findViewById(R.id.forwardButton);
-        backButton = (Button) findViewById(R.id.backButton);
-        leftButton = (Button) findViewById(R.id.leftButton);
-        rightButton = (Button) findViewById(R.id.rightButton);
-        stopButton = (Button) findViewById(R.id.stopButton);
-
+        manualControlButton = (Button) findViewById(R.id.manualControlButton);
+        autonomousControlButton = (Button) findViewById(R.id.autonomousControlButton);
         poseDataTextView = (TextView) findViewById(R.id.poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.connectionTextView);
 
@@ -104,38 +95,27 @@ public class MainActivity extends AppCompatActivity {
                 tsConn = new TangoSerialConnection(mainActivity);
                 connectionTextView.setText("Connection successful!");
 
-                navigationLogic = new NavigationLogic(tsConn, mainActivity);
+                //navigationLogic = new NavigationLogic(tsConn, mainActivity);
             }
         });
 
-        forwardButton.setOnClickListener(new View.OnClickListener() {
+        manualControlButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                tsConn.handleMessage('f');
+                // Start manual control activity
+                Intent manualControlIntent = new Intent(MainActivity.this, ManualControlActivity.class);
+                manualControlIntent.putExtra("TangoSerialConnection", tsConn);
+                MainActivity.this.startActivity(manualControlIntent);
             }
         });
-        backButton.setOnClickListener(new View.OnClickListener() {
+
+        autonomousControlButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                tsConn.handleMessage('b');
-            }
-        });
-        leftButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tsConn.handleMessage('l');
-            }
-        });
-        rightButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tsConn.handleMessage('r');
-            }
-        });
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tsConn.handleMessage('s');
+                // Start autonomous control activity
+                Intent autonomousControlIntent = new Intent(MainActivity.this, AutonomousControlActivity.class);
+                autonomousControlIntent.putExtra("TangoSerialConnection", tsConn);
+                MainActivity.this.startActivity(autonomousControlIntent);
             }
         });
 

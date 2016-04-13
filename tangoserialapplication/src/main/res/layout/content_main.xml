@@ -12,43 +12,53 @@
     tools:context="com.example.tangoserialapplication.MainActivity"
     tools:showIn="@layout/activity_main">
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connect"
-        android:id="@+id/connectButton"
-        android:layout_centerHorizontal="true"
-        android:enabled="true"
-        android:contextClickable="true"
-        android:clickable="true" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Stop"
-        android:id="@+id/stopButton"
-        android:layout_below="@+id/connectButton"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="70dp" />
+        android:text="Manual"
+        android:id="@+id/manualControlButton"
+        android:layout_below="@+id/selectControlText"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="68dp" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Network"
+        android:id="@+id/networkControlButton"
+        android:singleLine="true"
+        android:layout_marginRight="40dp"
+        android:layout_marginTop="39dp"
+        android:layout_below="@+id/manualControlButton"
+        android:layout_alignParentStart="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Autonomous"
+        android:id="@+id/autonomousControlButton"
+        android:layout_below="@+id/networkControlButton"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="34dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Pose Data"
-        android:id="@+id/poseDataTextView"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="69dp" />
+        android:text="Select Control..."
+        android:id="@+id/selectControlText"
+        android:layout_marginTop="68dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true" />
 
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Start"
-        android:id="@+id/startButton"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="10dp"/>
+        android:text="Connect"
+        android:id="@+id/connectButton"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -56,38 +66,6 @@
         android:text="Connection Status"
         android:id="@+id/connectionTextView"
         android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Back"
-        android:id="@+id/backButton"
-        android:layout_below="@+id/stopButton"
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Right"
-        android:id="@+id/rightButton"
-        android:layout_alignTop="@+id/stopButton"
-        android:layout_toRightOf="@id/stopButton"/>
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Forward"
-        android:id="@+id/forwardButton"
-        android:layout_above="@+id/rightButton"
-        android:layout_centerHorizontal="true" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Left"
-        android:id="@+id/leftButton"
-        android:layout_below="@+id/forwardButton"
-        android:layout_toLeftOf="@id/stopButton"/>
-
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="33dp" />
 </RelativeLayout>

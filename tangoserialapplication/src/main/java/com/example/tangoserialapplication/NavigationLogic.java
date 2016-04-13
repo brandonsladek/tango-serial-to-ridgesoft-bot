@@ -9,14 +9,11 @@ import com.google.atap.tangoservice.TangoPoseData;
 public class NavigationLogic {
 
     private TangoSerialConnection tsConn;
-    private MainActivity mainActivity;
-
     private double[] hardcodedLocation = new double[]{-3.0, 4.0, 1.0};
 
     // Constructor
-    public NavigationLogic(TangoSerialConnection tsConn, MainActivity mainActivity) {
+    public NavigationLogic(TangoSerialConnection tsConn) {
         this.tsConn = tsConn;
-        this.mainActivity = mainActivity;
     }
 
     public double getDistance(double[] ourLocation, double[] goLocation) {
@@ -33,10 +30,8 @@ public class NavigationLogic {
 
     public void navigate(TangoPoseData poseData) {
 
-        //TangoPoseData poseData = mainActivity.getCurrentPose();
         double[] ourLocation = poseData.translation;
-        //double[] rotationInfo = poseData.rotation;
-        double ourRotation = mainActivity.getPoseRotationDegrees();
+        double ourRotation = getPoseRotationDegrees(poseData);
 
         double ourX = ourLocation[0];
         double ourY = ourLocation[1];
@@ -143,6 +138,35 @@ public class NavigationLogic {
                 }
             }
         }
+    }
+
+    public float getPoseRotationDegrees(TangoPoseData poseData) {
+
+        float[] translation = poseData.getTranslationAsFloats();
+        float x = translation[0];
+        float y = translation[1];
+        float z = translation[2];
+        float w = translation[3];
+        float t = y*x+z*w;
+        int pole;
+        float rollRadians;
+
+        if (t > 0.499f) {
+            pole = 1;
+        } else if (t < -0.499f) {
+            pole = -1;
+        } else {
+            pole = 0;
+        }
+
+        if (pole == 0) {
+            rollRadians = (float) Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
+        } else {
+            rollRadians = pole * 2f * (float) Math.atan2(y, w);
+        }
+
+        // 0 - 360
+        return (float) Math.toDegrees(rollRadians) + 180;
     }
 
 }
