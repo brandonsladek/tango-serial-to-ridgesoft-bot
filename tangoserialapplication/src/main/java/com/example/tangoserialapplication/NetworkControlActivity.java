@@ -26,7 +26,12 @@ public class NetworkControlActivity extends Activity {
     private NetworkControlActivity context = this;
     Handler updateConversationHandler;
     Thread serverThread = null;
-    public static final int SERVERPORT = 5010;
+//    public static final int SERVERPORT = 5010;
+    private int SERVERPORT = 5010;
+    private String landmark1Name;
+    private String landmark2Name;
+
+    //probably need to have the position for L1 and L2 as well here....
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -100,7 +105,6 @@ public class NetworkControlActivity extends Activity {
         }
 
         public void run() {
-
             while (!Thread.currentThread().isInterrupted()) {
 
                 try {
@@ -111,6 +115,20 @@ public class NetworkControlActivity extends Activity {
                     if (read.equals("c")) {
                         tangoSerialConnection = new TangoSerialConnection(context);
                         updateConversationHandler.post(new updateUIThread("Connected!"));
+                    } else if(read.equals("recordADF")) {
+
+                        //need to do something to start recording the ADF here.....
+
+                    } else if(read.contains("save")){
+                        String landmarkName = read;
+                        String commands[] = landmarkName.split(" ");
+                        if(landmark1Name == null){
+                            landmark1Name = commands[1];
+                            //save L1 location here...Class variable up top...
+                        }else{
+                            landmark2Name = commands[2];
+                            //save L2 location here...Class variables up top...
+                        }
                     } else {
                         if (tangoSerialConnection != null) {
                             tangoSerialConnection.handleMessage(read.charAt(0));
@@ -127,6 +145,18 @@ public class NetworkControlActivity extends Activity {
 
     }
 
+
+    //maybe don't need this, added just in case....-------------------------
+    public String getLandmark(int num){
+        if(num == 1){
+            return landmark1Name;
+        }else if(num == 2){
+            return landmark2Name;
+        }
+        return "";
+    }
+    //----------------------------------------------------------------------
+
     class updateUIThread implements Runnable {
         private String msg;
 
@@ -140,3 +170,4 @@ public class NetworkControlActivity extends Activity {
         }
     }
 }
+
