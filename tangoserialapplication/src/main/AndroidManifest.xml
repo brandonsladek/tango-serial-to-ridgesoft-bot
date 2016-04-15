@@ -5,6 +5,9 @@
     <uses-sdk android:minSdkVersion="12" />
     <uses-feature android:name="android.hardware.usb.host" />
 
+    <uses-permission android:name="android.permission.INTERNET"> </uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"> </uses-permission>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -29,8 +32,10 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/device_filter" />
         </activity>
-        
-        <activity android:name=".NavigationActivity" />
+
+        <activity android:name=".NetworkControlActivity" />
+        <activity android:name=".ManualControlActivity" />
+        <activity android:name=".AutonomousControlActivity" />
         
     </application>
 

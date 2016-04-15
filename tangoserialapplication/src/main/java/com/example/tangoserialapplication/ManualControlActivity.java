@@ -25,7 +25,7 @@ public class ManualControlActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.mc_activity);
+        setContentView(R.layout.activity_manual_control);
 
         forwardButton = (Button) findViewById(R.id.forwardButton);
         backButton = (Button) findViewById(R.id.backButton);

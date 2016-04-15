@@ -1,5 +1,6 @@
 package com.example.tangoserialapplication;
 
+import android.app.Activity;
 import android.content.Context;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
@@ -23,8 +24,8 @@ public class TangoSerialConnection implements Serializable {
     private UsbSerialDriver driver = null;
     private UsbSerialPort port = null;
 
-    public TangoSerialConnection(MainActivity mainActivity) {
-        usbManager = (UsbManager) mainActivity.getSystemService(Context.USB_SERVICE);
+    public TangoSerialConnection(Activity activity) {
+        usbManager = (UsbManager) activity.getSystemService(Context.USB_SERVICE);
 
         List<UsbSerialDriver> availableDrivers =  UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
 
