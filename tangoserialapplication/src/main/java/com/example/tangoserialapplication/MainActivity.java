@@ -3,11 +3,7 @@ package com.example.tangoserialapplication;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -15,15 +11,14 @@ import com.google.atap.tangoservice.Tango;
 
 public class MainActivity extends Activity {
 
-    private TangoSerialConnection tsConn;
+    private TangoSerialConnection tangoSerialConnection;
 
     private Button manualControlButton;
     private Button autonomousControlButton;
     private Button networkControlButton;
-    private Button connectButton;
-    private Button startButton;
 
-    private TextView connectionTextView;
+    //private Button connectButton;
+    //private TextView connectionTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,30 +37,29 @@ public class MainActivity extends Activity {
         }
 
         // Buttons and text views!
-        connectButton = (Button) findViewById(R.id.connectButton);
+        // connectButton = (Button) findViewById(R.id.connectButton);
         manualControlButton = (Button) findViewById(R.id.manualControlButton);
         autonomousControlButton = (Button) findViewById(R.id.autonomousControlButton);
         networkControlButton = (Button) findViewById(R.id.networkControlButton);
 
-        connectionTextView = (TextView) findViewById(R.id.connectionTextView);
-        connectionTextView.setText("Not connected...");
+        tangoSerialConnection = TangoSerialConnection.getInstance();
+        //connectionTextView = (TextView) findViewById(R.id.connectionTextView);
+        //connectionTextView.setText("Not connected...");
 
-        connectButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tsConn = new TangoSerialConnection(mainActivity);
-                connectionTextView.setText("Connection successful!");
-
-                //navigationLogic = new NavigationLogic(tsConn, mainActivity);
-            }
-        });
+//        connectButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                tangoSerialConnection = new TangoSerialConnection(mainActivity);
+//                connectionTextView.setText("Connected!");
+//            }
+//        });
 
         manualControlButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Start manual control activity
                 Intent manualControlIntent = new Intent(MainActivity.this, ManualControlActivity.class);
-                manualControlIntent.putExtra("TangoSerialConnection", tsConn);
+                manualControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(manualControlIntent);
             }
         });
@@ -75,7 +69,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start autonomous control activity
                 Intent autonomousControlIntent = new Intent(MainActivity.this, AutonomousControlActivity.class);
-                autonomousControlIntent.putExtra("TangoSerialConnection", tsConn);
+                autonomousControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(autonomousControlIntent);
             }
         });
@@ -85,57 +79,11 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start network control activity
                 Intent networkControlIntent = new Intent(MainActivity.this, NetworkControlActivity.class);
-                //networkControlIntent.putExtra("TangoSerialConnection", tsConn);
+                networkControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(networkControlIntent);
             }
         });
 
-//        startButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                // start analyzing pose updates and sending serial output
-////                new Runnable() {
-////                    @Override
-////                    public void run() {
-////                        while (true) {
-////                            navigationLogic.navigate(currentPose);
-////                        }
-////                    }
-////                };
-//
-//                // Start new intent in new GUI
-////                Intent navigationIntent = new Intent(MainActivity.this, NavigationActivity.class);
-////                MainActivity.this.startActivity(navigationIntent);
-//
-////                while(true) {
-////                    TangoPoseData pose = getCurrentPose();
-////                    navigationLogic.navigate(pose);
-////                }
-//            }
-//        });
-
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
 }

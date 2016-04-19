@@ -19,12 +19,13 @@
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true" />
 
-    <RadioButton
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Stop"
         android:id="@+id/ac_stopButton"
-        android:layout_marginBottom="64dp"
         android:layout_alignParentBottom="true"
-        android:layout_alignStart="@+id/ac_poseDataTextView" />
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="70dp" />
+
 </RelativeLayout>

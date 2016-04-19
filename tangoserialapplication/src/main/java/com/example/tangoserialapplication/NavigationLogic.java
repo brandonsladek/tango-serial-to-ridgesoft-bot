@@ -8,12 +8,14 @@ import com.google.atap.tangoservice.TangoPoseData;
 
 public class NavigationLogic {
 
-    private TangoSerialConnection tsConn;
     private double[] hardcodedLocation = new double[]{-3.0, 4.0, 1.0};
+    private double[] targetLocation;
 
     // Constructor
-    public NavigationLogic(TangoSerialConnection tsConn) {
-        this.tsConn = tsConn;
+    public NavigationLogic() {}
+
+    public NavigationLogic(double[] targetLocation) {
+        this.targetLocation = targetLocation;
     }
 
     public double getDistance(double[] ourLocation, double[] goLocation) {
@@ -28,10 +30,10 @@ public class NavigationLogic {
         return distance;
     }
 
-    public void navigate(TangoPoseData poseData) {
+    public char navigate(TangoPoseData poseData, double[] targetLocation) {
 
         double[] ourLocation = poseData.translation;
-        double ourRotation = getPoseRotationDegrees(poseData);
+        double ourRotation = (int) getPoseRotationDegrees(poseData);
 
         double ourX = ourLocation[0];
         double ourY = ourLocation[1];
@@ -52,14 +54,14 @@ public class NavigationLogic {
 
         double[] distances = new double[8];
 
-        double distanceNorth = getDistance(north, hardcodedLocation);
-        double distanceNorthEast = getDistance(northEast, hardcodedLocation);
-        double distanceEast = getDistance(east, hardcodedLocation);
-        double distanceSouthEast = getDistance(southEast, hardcodedLocation);
-        double distanceSouth = getDistance(south, hardcodedLocation);
-        double distanceSouthWest = getDistance(southWest, hardcodedLocation);
-        double distanceWest = getDistance(west, hardcodedLocation);
-        double distanceNorthWest = getDistance(northWest, hardcodedLocation);
+        double distanceNorth = getDistance(north, targetLocation);
+        double distanceNorthEast = getDistance(northEast, targetLocation);
+        double distanceEast = getDistance(east, targetLocation);
+        double distanceSouthEast = getDistance(southEast, targetLocation);
+        double distanceSouth = getDistance(south, targetLocation);
+        double distanceSouthWest = getDistance(southWest, targetLocation);
+        double distanceWest = getDistance(west, targetLocation);
+        double distanceNorthWest = getDistance(northWest, targetLocation);
 
         distances [0] = distanceNorth;
         distances [1] = distanceNorthEast;
@@ -81,9 +83,9 @@ public class NavigationLogic {
         }
 
         double goRotation = convertIndexToYRotationValue (indexWithMinimumDistance);
-        double currentDistance = getDistance(ourLocation, hardcodedLocation);
+        double currentDistance = getDistance(ourLocation, targetLocation);
 
-        outputDirectionCommand(ourRotation, goRotation, currentDistance);
+        return outputDirectionCommand(ourRotation, goRotation, currentDistance);
     }
 
     public double convertIndexToYRotationValue(int index) {
@@ -109,31 +111,31 @@ public class NavigationLogic {
         }
     }
 
-    public void outputDirectionCommand(double ourRotation, double goRotation, double distance) {
+    public char outputDirectionCommand(double ourRotation, double goRotation, double distance) {
 
         if (distance < 0.5) {
             // Tell the robot to stop
-            tsConn.handleMessage('s');
+            return 's';
         } else {
             if (ourRotation < goRotation + 15 && ourRotation > goRotation - 15) {
                 // Tell the robot to go forward
-                tsConn.handleMessage('f');
+                return 'f';
             } else {
                 if (ourRotation < goRotation) {
                     double diff = goRotation - ourRotation;
                     if (diff <= 180) {
                         // Tell the robot to turn right
-                        tsConn.handleMessage('r');
+                        return 'r';
                     } else {
                         // Tell the robot to turn left
-                        tsConn.handleMessage('l');
+                        return 'l';
                     }
                 } else {
                     double diff = ourRotation - goRotation;
                     if (diff <= 180) {
-                        tsConn.handleMessage('l');
+                        return 'l';
                     } else {
-                        tsConn.handleMessage('r');
+                        return 'r';
                     }
                 }
             }

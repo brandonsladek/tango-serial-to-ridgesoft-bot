@@ -2,7 +2,9 @@ package com.example.tangoserialapplication;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.widget.RadioButton;
+import android.os.Handler;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,12 +21,11 @@ import com.google.atap.tangoservice.TangoXyzIjData;
 
 import java.util.ArrayList;
 
-/**
- * Created by brandonsladek on 4/12/16.
- */
+/** Brandon Sladek and John Waters */
+
 public class AutonomousControlActivity extends Activity {
 
-    private RadioButton stopRadioButton;
+    private Button stopButton;
     private TangoSerialConnection tsConn;
     private NavigationLogic navigationLogic;
 
@@ -34,10 +35,14 @@ public class AutonomousControlActivity extends Activity {
     private boolean mIsLearningMode = false;
     private boolean mIsConstantSpaceRelocalize = true;
 
+    private Thread usbConnectionThread;
+    private AutonomousControlActivity context = this;
+
     private TangoPoseData currentPose;
 
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
+    private TextView connectionTextView;
 
     private float[] rotationFloats;
 
@@ -46,25 +51,42 @@ public class AutonomousControlActivity extends Activity {
     float z;
     float w;
 
+    public Handler handler;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_autonomous_control);
 
-        stopRadioButton = (RadioButton) findViewById(R.id.ac_stopButton);
+        stopButton = (Button) findViewById(R.id.ac_stopButton);
+        poseDataTextView = (TextView) findViewById(R.id.ac_poseDataTextView);
+        connectionTextView = (TextView) findViewById(R.id.ac_connectionTextView);
 
-        tsConn = (TangoSerialConnection) getIntent().getSerializableExtra("TangoSerialConnection");
-
-        if (tsConn != null) {
-            navigationLogic = new NavigationLogic(tsConn);
-        }
+        //tsConn = (TangoSerialConnection) getIntent().getSerializableExtra("TangoSerialConnection");
+        //tsConn = new TangoSerialConnection(context);
+        navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
         mTango = new Tango(this);
 
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
+
+        handler = new Handler();
+
+        // this should spin up a serial connection thread
+        //this.usbConnectionThread = new Thread(new UsbConnectionThread(handler, new TangoSerialConnection(context)));
+        //this.usbConnectionThread.start();
+
+        stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onDestroy();
+            }
+        });
     }
+
 
     // All of the methods below this point are from the Google Project Tango area learning tutorials
     // Some of the methods are modified.
@@ -113,9 +135,11 @@ public class AutonomousControlActivity extends Activity {
     // From Google Project Tango website tutorial
     public String getName(String uuid) {
 
-        TangoAreaDescriptionMetaData metadata = new TangoAreaDescriptionMetaData();
+        TangoAreaDescriptionMetaData metadata;
         metadata = mTango.loadAreaDescriptionMetaData(uuid);
+
         byte[] nameBytes = metadata.get(TangoAreaDescriptionMetaData.KEY_NAME);
+
         if (nameBytes != null) {
             String name = new String(nameBytes);
             return name;
@@ -125,7 +149,7 @@ public class AutonomousControlActivity extends Activity {
     }
 
     /**
-     * Initializes pose data we keep track of. To be done
+     * Initializes pose data we keep track of.
      */
     private void initializePoseData() {
         currentPose = new TangoPoseData();
@@ -157,7 +181,7 @@ public class AutonomousControlActivity extends Activity {
         mTango.connectListener(framePairs, new Tango.OnTangoUpdateListener() {
             @Override
             public void onXyzIjAvailable(TangoXyzIjData xyzij) {
-                // Not using XyzIj data for this sample
+                // Will have to use XyzIj data for A level
             }
 
             // Listen to Tango Events
@@ -173,11 +197,6 @@ public class AutonomousControlActivity extends Activity {
                 // the data.
                 synchronized (mSharedLock) {
                     currentPose = pose;
-                    rotationFloats = currentPose.getRotationAsFloats();
-                    x = rotationFloats[0];
-                    y = rotationFloats[1];
-                    z = rotationFloats[2];
-                    w = rotationFloats[3];
                 }
 
                 runOnUiThread(new Runnable() {
@@ -187,11 +206,10 @@ public class AutonomousControlActivity extends Activity {
 
                             double xPos = currentPose.translation[0];
                             double yPos = currentPose.translation[1];
-                            //double rotation = currentPose.rotation[1];
 
                             String poseString = "X position: " +  round(xPos) +
                                     "\nY position: " + round(yPos) +
-                                    "\nRotation: " + (int) getPoseRotationDegrees();
+                                    "\nRotation: " + (int) getPoseRotationDegrees(currentPose.getRotationAsFloats());
 
                             poseDataTextView.setText(poseString);
                         }
@@ -199,19 +217,23 @@ public class AutonomousControlActivity extends Activity {
                 });
 
                 if (navigationLogic != null) {
-                    navigationLogic.navigate(currentPose);
+                    //tsConn.handleMessage(navigationLogic.navigate(pose));
                 }
-
             }
 
             @Override
             public void onFrameAvailable(int cameraId) {
-                // We are not using onFrameAvailable for this application.
+                // We will use this method for dealing with the camera
             }
         });
     }
 
-    public float getPoseRotationDegrees() {
+    public float getPoseRotationDegrees(float[] rotationFloats) {
+
+        float x = rotationFloats[0];
+        float y = rotationFloats[1];
+        float z = rotationFloats[2];
+        float w = rotationFloats[3];
 
         float t = y*x+z*w;
         int pole;
@@ -236,9 +258,11 @@ public class AutonomousControlActivity extends Activity {
     }
 
     private double round(double number) {
+
         double newNumber = number * 100;
         int newInt = (int) newNumber;
         return newInt / 100.0;
+
     }
 
     @Override
