@@ -1,5 +1,9 @@
 package com.example.tangoserialapplication;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
+
 import com.google.atap.tangoservice.TangoPoseData;
 
 /**
@@ -10,6 +14,8 @@ public class NavigationLogic {
 
     private double[] hardcodedLocation = new double[]{-3.0, 4.0, 1.0};
     private double[] targetLocation;
+
+    public Handler handler;
 
     // Constructor
     public NavigationLogic() {}
@@ -30,14 +36,11 @@ public class NavigationLogic {
         return distance;
     }
 
-    public char navigate(TangoPoseData poseData, double[] targetLocation) {
+    public char navigate(double[] translation, double[] rotation, double[] target) {
 
-        double[] ourLocation = poseData.translation;
-        double ourRotation = (int) getPoseRotationDegrees(poseData);
-
-        double ourX = ourLocation[0];
-        double ourY = ourLocation[1];
-        double ourZ = ourLocation[2];
+        double ourX = translation[0];
+        double ourY = translation[1];
+        double ourZ = translation[2];
 
         float radiusDiff = 2.0f;
         float xDiff = (float) (radiusDiff * Math.cos (45.0));
@@ -54,14 +57,14 @@ public class NavigationLogic {
 
         double[] distances = new double[8];
 
-        double distanceNorth = getDistance(north, targetLocation);
-        double distanceNorthEast = getDistance(northEast, targetLocation);
-        double distanceEast = getDistance(east, targetLocation);
-        double distanceSouthEast = getDistance(southEast, targetLocation);
-        double distanceSouth = getDistance(south, targetLocation);
-        double distanceSouthWest = getDistance(southWest, targetLocation);
-        double distanceWest = getDistance(west, targetLocation);
-        double distanceNorthWest = getDistance(northWest, targetLocation);
+        double distanceNorth = getDistance(north, target);
+        double distanceNorthEast = getDistance(northEast, target);
+        double distanceEast = getDistance(east, target);
+        double distanceSouthEast = getDistance(southEast, target);
+        double distanceSouth = getDistance(south, target);
+        double distanceSouthWest = getDistance(southWest, target);
+        double distanceWest = getDistance(west, target);
+        double distanceNorthWest = getDistance(northWest, target);
 
         distances [0] = distanceNorth;
         distances [1] = distanceNorthEast;
@@ -82,13 +85,14 @@ public class NavigationLogic {
             }
         }
 
+        double ourRotation = (int) getPoseRotationDegrees(translation);
         double goRotation = convertIndexToYRotationValue (indexWithMinimumDistance);
-        double currentDistance = getDistance(ourLocation, targetLocation);
+        double currentDistance = getDistance(translation, target);
 
-        return outputDirectionCommand(ourRotation, goRotation, currentDistance);
+        return getDirectionCommand(ourRotation, goRotation, currentDistance);
     }
 
-    public double convertIndexToYRotationValue(int index) {
+    private double convertIndexToYRotationValue(int index) {
         switch (index) {
             case 0:
                 return 0;
@@ -111,7 +115,7 @@ public class NavigationLogic {
         }
     }
 
-    public char outputDirectionCommand(double ourRotation, double goRotation, double distance) {
+    private char getDirectionCommand(double ourRotation, double goRotation, double distance) {
 
         if (distance < 0.5) {
             // Tell the robot to stop
@@ -142,16 +146,15 @@ public class NavigationLogic {
         }
     }
 
-    public float getPoseRotationDegrees(TangoPoseData poseData) {
+    private double getPoseRotationDegrees(double[] translation) {
 
-        float[] translation = poseData.getTranslationAsFloats();
-        float x = translation[0];
-        float y = translation[1];
-        float z = translation[2];
-        float w = translation[3];
-        float t = y*x+z*w;
+        double x = translation[0];
+        double y = translation[1];
+        double z = translation[2];
+        double w = translation[3];
+        double t = y*x+z*w;
         int pole;
-        float rollRadians;
+        double rollRadians;
 
         if (t > 0.499f) {
             pole = 1;
@@ -162,13 +165,29 @@ public class NavigationLogic {
         }
 
         if (pole == 0) {
-            rollRadians = (float) Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
+            rollRadians = Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
         } else {
-            rollRadians = pole * 2f * (float) Math.atan2(y, w);
+            rollRadians = pole * 2f * Math.atan2(y, w);
         }
 
         // 0 - 360
-        return (float) Math.toDegrees(rollRadians) + 180;
+        return Math.toDegrees(rollRadians) + 180;
     }
 
+//    @Override
+//    public void run() {
+//        Looper.prepare();
+//
+//        handler = new Handler() {
+//            @Override
+//            public void handleMessage(Message msg) {
+//                double[] translation = msg.getData().getDoubleArray("TRANSLATION");
+//                double[] rotation = msg.getData().getDoubleArray("ROTATION");
+//                double[] target = msg.getData().getDoubleArray("TARGET");
+//                char command = navigate(translation, rotation, target);
+//            }
+//        };
+//
+//        Looper.loop();
+//    }
 }

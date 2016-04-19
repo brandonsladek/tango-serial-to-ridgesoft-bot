@@ -5,13 +5,11 @@ import android.content.Context;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-import com.google.atap.tangoservice.Tango;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
@@ -31,31 +29,8 @@ public class TangoSerialConnection implements Runnable, Serializable {
     private UsbSerialDriver driver = null;
     private UsbSerialPort port = null;
     private boolean isConnected = false;
-    public static Handler handler;
-    private String TANGO_SERIAL_CONNECTION_THREAD;
-    private Context applicationContext;
-
-    // private static TangoSerialConnection tangoSerialConnection;
-
-    // private TangoSerialConnection() {}
-
-//    public static TangoSerialConnection getInstance() {
-//        //return INSTANCE;
-//    }
-
-//    public Thread init(final Context context) {
-//        applicationContext = context.getApplicationContext();
-//        usbManager = (UsbManager) applicationContext.getSystemService(applicationContext.USB_SERVICE);
-//        return new Thread(INSTANCE);
-//    }
-
-//    public Context getApplicationContext() {
-//        if (null == applicationContext) {
-//            throw new IllegalStateException("have you called init(context)?");
-//        }
-//
-//        return applicationContext;
-//    }
+    public Handler handler;
+    private String TANGO_SERIAL_CONNECTION_THREAD = "TANGO_SERIAL_CONNECTION_THREAD";
 
     public TangoSerialConnection(Activity activity) {
         usbManager = (UsbManager) activity.getSystemService(Context.USB_SERVICE);
@@ -72,7 +47,6 @@ public class TangoSerialConnection implements Runnable, Serializable {
                 break;
             }
         }
-
         connection = usbManager.openDevice(driver.getDevice());
         port = driver.getPorts().get(0);
 
@@ -83,14 +57,6 @@ public class TangoSerialConnection implements Runnable, Serializable {
             port.setParameters(115200, UsbSerialPort.DATABITS_8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
 
         } catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void handleMessage(char c) {
-        try {
-            port.write(new byte[]{(byte) c}, 1000);
-        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -137,9 +103,7 @@ public class TangoSerialConnection implements Runnable, Serializable {
                 }
             }
         };
-
         Looper.loop();
-
     }
 
 }

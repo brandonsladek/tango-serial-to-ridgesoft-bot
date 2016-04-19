@@ -2,7 +2,7 @@ package com.example.tangoserialapplication;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.Handler;
+import android.os.Message;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -26,32 +26,28 @@ import java.util.ArrayList;
 public class AutonomousControlActivity extends Activity {
 
     private Button stopButton;
-    private TangoSerialConnection tsConn;
-    private NavigationLogic navigationLogic;
 
+    private TangoSerialConnection tangoSerialConnection;
+    private NavigationLogic navigationLogic;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = false;
     private boolean mIsConstantSpaceRelocalize = true;
-
-    private Thread usbConnectionThread;
-    private AutonomousControlActivity context = this;
-
     private TangoPoseData currentPose;
-
+    private TangoPoseData[] mPoses;
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
     private TextView connectionTextView;
+    private TextView adfUUIDTextView;
+
+    private double[] targetLocation = new double[]{-3.0, 4.0, 0.0};
 
     private float[] rotationFloats;
-
     float x;
     float y;
     float z;
     float w;
-
-    public Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,9 +58,13 @@ public class AutonomousControlActivity extends Activity {
         stopButton = (Button) findViewById(R.id.ac_stopButton);
         poseDataTextView = (TextView) findViewById(R.id.ac_poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.ac_connectionTextView);
+        adfUUIDTextView = (TextView) findViewById(R.id.ac_adfUUIDTextView);
 
-        //tsConn = (TangoSerialConnection) getIntent().getSerializableExtra("TangoSerialConnection");
-        //tsConn = new TangoSerialConnection(context);
+        // Start thread for usb serial connection
+        tangoSerialConnection = new TangoSerialConnection(this);
+        Thread thread = new Thread(tangoSerialConnection);
+        thread.start();
+
         navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
@@ -73,20 +73,42 @@ public class AutonomousControlActivity extends Activity {
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
 
-        handler = new Handler();
-
-        // this should spin up a serial connection thread
-        //this.usbConnectionThread = new Thread(new UsbConnectionThread(handler, new TangoSerialConnection(context)));
-        //this.usbConnectionThread.start();
-
         stopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 onDestroy();
             }
         });
+
+//        char currentCommand;
+//
+//        Thread navigationLogicThread = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                NavigationLogic navigationLogic = new NavigationLogic();
+//
+//                while(!Thread.currentThread().isInterrupted()) {
+//                    char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, targetLocation);
+//                    sendCommandToHandler(command);
+//                }
+//            }
+//        });
+//        navigationLogicThread.start();
+
+//        while(true) {
+//            char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, targetLocation);
+//            sendCommandToHandler(command);
+//        }
+
     }
 
+    private void sendCommandToHandler(char commandValue) {
+        Message msg = tangoSerialConnection.handler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putChar("COMMAND_VALUE", commandValue);
+        msg.setData(bundle);
+        tangoSerialConnection.handler.sendMessage(msg);
+    }
 
     // All of the methods below this point are from the Google Project Tango area learning tutorials
     // Some of the methods are modified.
@@ -97,14 +119,12 @@ public class AutonomousControlActivity extends Activity {
      */
     private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
 
-        TangoConfig config = new TangoConfig();
-        config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
+        TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
 
         // Check if learning mode
         if (isLearningMode) {
             // Set learning mode to config.
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
-
         }
 
         // Check for Load ADF/Constant Space relocalization mode
@@ -116,17 +136,17 @@ public class AutonomousControlActivity extends Activity {
 
             // Load the ADF named bestAdf
             if (fullUUIDList.size() > 0) {
-//                for (int i = 0; i < fullUUIDList.size(); i++) {
-//                    String uuid = fullUUIDList.get(i);
-//                    String name = getName(uuid);
-//                    if (name != null) {
-//                        if (name.equals("bestAdf")) {
-//                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
-//                        }
-//                    }
-//                }
                 config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-                        fullUUIDList.get(fullUUIDList.size()-1));
+                        fullUUIDList.get(fullUUIDList.size() - 1));
+
+                final String adfName = getName(fullUUIDList.get(fullUUIDList.size()-1));
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adfUUIDTextView.setText("ADF Using: " + adfName);
+                    }
+                });
             }
         }
         return config;
@@ -196,6 +216,26 @@ public class AutonomousControlActivity extends Activity {
                 // UI loop doesn't interfere while Pose call back is updating
                 // the data.
                 synchronized (mSharedLock) {
+
+//                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
+//                        mPoses[0] = pose;
+//
+//                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
+//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
+//                        mPoses[1] = pose;
+//
+//                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
+//                        mPoses[2] = pose;
+//
+//                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
+//                            mIsRelocalized = true;
+//                        } else {
+//                            mIsRelocalized = false;
+//                        }
+//                    }
+
                     currentPose = pose;
                 }
 
@@ -216,9 +256,6 @@ public class AutonomousControlActivity extends Activity {
                     }
                 });
 
-                if (navigationLogic != null) {
-                    //tsConn.handleMessage(navigationLogic.navigate(pose));
-                }
             }
 
             @Override
@@ -227,6 +264,7 @@ public class AutonomousControlActivity extends Activity {
             }
         });
     }
+
 
     public float getPoseRotationDegrees(float[] rotationFloats) {
 
@@ -258,11 +296,9 @@ public class AutonomousControlActivity extends Activity {
     }
 
     private double round(double number) {
-
         double newNumber = number * 100;
         int newInt = (int) newNumber;
         return newInt / 100.0;
-
     }
 
     @Override
@@ -270,7 +306,7 @@ public class AutonomousControlActivity extends Activity {
         super.onResume();
 
         // Reset pose data and start counting from resume.
-        //initializePoseData();
+        initializePoseData();
 
         // Clear the relocalization state: we don't know where the device has been since our app was paused.
         mIsRelocalized = false;

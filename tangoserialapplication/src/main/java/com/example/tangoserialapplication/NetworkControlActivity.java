@@ -33,18 +33,11 @@ public class NetworkControlActivity extends Activity {
     private TextView mostRecentMessageTextView;
     private TangoSerialConnection tangoSerialConnection;
     private NetworkControlActivity context = this;
-
-    Handler updateConversationHandler;
-    Thread serverThread = null;
-//    public static final int SERVERPORT = 5010;
     private int SERVERPORT = 5010;
     private String landmark1Name;
     private String landmark2Name;
     private float[] landmark1;
     private float[] landmark2;
-
-    //probably need to have the position for L1 and L2 as well here....
-
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
@@ -53,9 +46,9 @@ public class NetworkControlActivity extends Activity {
     private TangoPoseData currentPose;
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
-
+    Handler updateConversationHandler;
+    Thread serverThread = null;
     private float[] rotationFloats;
-
     float x;
     float y;
     float z;
@@ -218,41 +211,11 @@ public class NetworkControlActivity extends Activity {
         });
     }
 
-    public float getPoseRotationDegrees(float[] rotationFloats) {
-
-        float x = rotationFloats[0];
-        float y = rotationFloats[1];
-        float z = rotationFloats[2];
-        float w = rotationFloats[3];
-
-        float t = y*x+z*w;
-        int pole;
-        float rollRadians;
-
-        if (t > 0.499f) {
-            pole = 1;
-        } else if (t < -0.499f) {
-            pole = -1;
-        } else {
-            pole = 0;
-        }
-
-        if (pole == 0) {
-            rollRadians = (float) Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
-        } else {
-            rollRadians = pole * 2f * (float) Math.atan2(y, w);
-        }
-
-        // 0 - 360
-        return (float) Math.toDegrees(rollRadians) + 180;
-    }
 
     private double round(double number) {
-
         double newNumber = number * 100;
         int newInt = (int) newNumber;
         return newInt / 100.0;
-
     }
 
     @Override
@@ -324,7 +287,6 @@ public class NetworkControlActivity extends Activity {
             }
 
             while (!Thread.currentThread().isInterrupted()) {
-
                 try {
                     // close this socket before closing serverSocket
                     socket = serverSocket.accept();
@@ -348,9 +310,7 @@ public class NetworkControlActivity extends Activity {
             this.clientSocket = clientSocket;
 
             try {
-
                 this.input = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -358,21 +318,19 @@ public class NetworkControlActivity extends Activity {
 
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-
                 try {
                     String read = input.readLine();
 
                     if (read.equals("c")) {
-                        //tangoSerialConnection = new TangoSerialConnection(context);
+                        tangoSerialConnection = new TangoSerialConnection(context);
                         Thread thread = new Thread(tangoSerialConnection);
                         thread.start();
                         updateConversationHandler.post(new updateUIThread("Connected!"));
-                    } else if (read.equals("recordADF")) {
 
+                    } else if (read.equals("recordADF")) {
                         //need to do something to start recording the ADF here.....
 
                     } else if (read.contains("save")) {
-
                         String landmarkName = read;
                         String commands[] = landmarkName.split(" ");
 
@@ -383,16 +341,19 @@ public class NetworkControlActivity extends Activity {
                             landmark2Name = commands[1];
                             landmark2 = currentPose.getTranslationAsFloats();
                         }
+
                     } else if (read.equals("goto1")) {
                         goToLocation(landmark1);
+
                     } else if (read.equals("goto2")) {
                         goToLocation(landmark2);
+
                     } else {
                         if (tangoSerialConnection != null) {
                             sendCommandToHandler(read.charAt(0));
                         }
-                    }
 
+                    }
                     updateConversationHandler.post(new updateUIThread(read));
 
                 } catch (IOException e) {
@@ -403,10 +364,10 @@ public class NetworkControlActivity extends Activity {
 
     }
 
-    public String getLandmark(int num){
-        if(num == 1){
+    public String getLandmark(int num) {
+        if (num == 1) {
             return landmark1Name;
-        }else if(num == 2){
+        } else if(num == 2) {
             return landmark2Name;
         }
         return "";

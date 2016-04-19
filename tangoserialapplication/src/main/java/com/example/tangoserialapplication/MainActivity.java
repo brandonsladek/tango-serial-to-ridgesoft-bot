@@ -11,22 +11,17 @@ import com.google.atap.tangoservice.Tango;
 
 public class MainActivity extends Activity {
 
-    private Thread tangoSerialConnection;
+    private TangoSerialConnection tangoSerialConnection;
 
     private Button manualControlButton;
     private Button autonomousControlButton;
     private Button networkControlButton;
-
-    //private Button connectButton;
-    //private TextView connectionTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        final MainActivity mainActivity = this;
 
         startActivityForResult(
                 Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_ADF_LOAD_SAVE),
@@ -37,36 +32,15 @@ public class MainActivity extends Activity {
         }
 
         // Buttons and text views!
-        // connectButton = (Button) findViewById(R.id.connectButton);
         manualControlButton = (Button) findViewById(R.id.manualControlButton);
         autonomousControlButton = (Button) findViewById(R.id.autonomousControlButton);
         networkControlButton = (Button) findViewById(R.id.networkControlButton);
-
-        //tangoSerialConnection = TangoSerialConnection.getInstance();
-
-        // This is a thread
-        //tangoSerialConnection = TangoSerialConnection.INSTANCE.init(getApplicationContext());
-
-        //Bundle usbThreadBundle = new Bundle();
-        //usbThreadBundle.putSerializable(tangoSerialConnection);
-
-        //connectionTextView = (TextView) findViewById(R.id.connectionTextView);
-        //connectionTextView.setText("Not connected...");
-
-//        connectButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                tangoSerialConnection = new TangoSerialConnection(mainActivity);
-//                connectionTextView.setText("Connected!");
-//            }
-//        });
 
         manualControlButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // Start manual control activity
                 Intent manualControlIntent = new Intent(MainActivity.this, ManualControlActivity.class);
-                //manualControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(manualControlIntent);
             }
         });
@@ -76,7 +50,6 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start autonomous control activity
                 Intent autonomousControlIntent = new Intent(MainActivity.this, AutonomousControlActivity.class);
-                //autonomousControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(autonomousControlIntent);
             }
         });
@@ -86,11 +59,9 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start network control activity
                 Intent networkControlIntent = new Intent(MainActivity.this, NetworkControlActivity.class);
-                //networkControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(networkControlIntent);
             }
         });
-
     }
 
 }

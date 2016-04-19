@@ -25,7 +25,15 @@
         android:text="Stop"
         android:id="@+id/ac_stopButton"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="70dp" />
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ADF Using"
+        android:id="@+id/ac_adfUUIDTextView"
+        android:layout_above="@+id/ac_stopButton"
+        android:layout_alignStart="@+id/ac_poseDataTextView"
+        android:layout_marginBottom="77dp" />
 
 </RelativeLayout>
