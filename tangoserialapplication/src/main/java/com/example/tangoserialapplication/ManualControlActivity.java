@@ -7,6 +7,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.atap.tangoservice.Tango;
+
 /**
  * Created by brandonsladek on 4/12/16.
  */
@@ -15,28 +17,28 @@ public class ManualControlActivity extends Activity {
 
     public ManualControlActivity context = this;
 
-//    private Button forwardButton;
-//    private Button backButton;
-//    private Button leftButton;
-//    private Button rightButton;
-//    private Button stopButton;
+    private Button forwardButton;
+    private Button backButton;
+    private Button leftButton;
+    private Button rightButton;
+    private Button stopButton;
 
-//    private TextView connectionTextView;
-//    private TextView poseDataTextView;
+    private TextView connectionTextView;
+    private TextView poseDataTextView;
 
     private TangoSerialConnection tangoSerialConnection;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        TextView connectionTextView;
-        TextView poseDataTextView;
-
-        Button forwardButton;
-        Button backButton;
-        Button leftButton;
-        Button rightButton;
-        Button stopButton;
+//        TextView connectionTextView;
+//        TextView poseDataTextView;
+//
+//        Button forwardButton;
+//        Button backButton;
+//        Button leftButton;
+//        Button rightButton;
+//        Button stopButton;
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_manual_control);
@@ -47,7 +49,9 @@ public class ManualControlActivity extends Activity {
         rightButton = (Button) findViewById(R.id.rightButton);
         stopButton = (Button) findViewById(R.id.stopButton);
 
-        tangoSerialConnection = (TangoSerialConnection) getIntent().getSerializableExtra("TangoSerialConnection");
+        //tangoSerialConnection = (TangoSerialConnection) getIntent().getSerializableExtra("TangoSerialConnection");
+        //tangoSerialConnection = TangoSerialConnection.INSTANCE.init(getApplicationContext());
+        //tangoSerialConnection.start();
 
         poseDataTextView = (TextView) findViewById(R.id.poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.connectionTextView);
@@ -56,6 +60,7 @@ public class ManualControlActivity extends Activity {
         //tangoSerialConnection.usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
         // Start thread for usb connection to robot
+        tangoSerialConnection = new TangoSerialConnection(context);
         Thread thread = new Thread(tangoSerialConnection);
         thread.start();
 

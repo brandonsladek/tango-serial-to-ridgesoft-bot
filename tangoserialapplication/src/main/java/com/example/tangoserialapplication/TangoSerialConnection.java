@@ -24,11 +24,9 @@ import java.util.List;
  * Created by brandonsladek on 3/28/16.
  */
 
-public enum TangoSerialConnection implements Runnable, Serializable {
+public class TangoSerialConnection implements Runnable, Serializable {
 
-    INSTANCE;
-
-    public UsbManager usbManager = null;
+    private UsbManager usbManager = null;
     private UsbDeviceConnection connection = null;
     private UsbSerialDriver driver = null;
     private UsbSerialPort port = null;
@@ -37,30 +35,31 @@ public enum TangoSerialConnection implements Runnable, Serializable {
     private String TANGO_SERIAL_CONNECTION_THREAD;
     private Context applicationContext;
 
-    private static TangoSerialConnection tangoSerialConnection;
+    // private static TangoSerialConnection tangoSerialConnection;
 
-    private TangoSerialConnection() {}
+    // private TangoSerialConnection() {}
 
-    public static TangoSerialConnection getInstance() {
-        return INSTANCE;
-    }
-
-    public void init(final Context context) {
-        applicationContext = context.getApplicationContext();
-        usbManager = (UsbManager) applicationContext.getSystemService(applicationContext.USB_SERVICE);
-    }
-
-    public Context getApplicationContext() {
-        if (null == applicationContext) {
-            throw new IllegalStateException("have you called init(context)?");
-        }
-
-        return applicationContext;
-    }
-
-//    public TangoSerialConnection(Activity activity) {
-//        usbManager = (UsbManager) activity.getSystemService(Context.USB_SERVICE);
+//    public static TangoSerialConnection getInstance() {
+//        //return INSTANCE;
 //    }
+
+//    public Thread init(final Context context) {
+//        applicationContext = context.getApplicationContext();
+//        usbManager = (UsbManager) applicationContext.getSystemService(applicationContext.USB_SERVICE);
+//        return new Thread(INSTANCE);
+//    }
+
+//    public Context getApplicationContext() {
+//        if (null == applicationContext) {
+//            throw new IllegalStateException("have you called init(context)?");
+//        }
+//
+//        return applicationContext;
+//    }
+
+    public TangoSerialConnection(Activity activity) {
+        usbManager = (UsbManager) activity.getSystemService(Context.USB_SERVICE);
+    }
 
     private void connectUsb() {
         List<UsbSerialDriver> availableDrivers =  UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);

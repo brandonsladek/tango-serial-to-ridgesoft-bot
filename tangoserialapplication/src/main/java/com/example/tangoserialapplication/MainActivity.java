@@ -11,7 +11,7 @@ import com.google.atap.tangoservice.Tango;
 
 public class MainActivity extends Activity {
 
-    private TangoSerialConnection tangoSerialConnection;
+    private Thread tangoSerialConnection;
 
     private Button manualControlButton;
     private Button autonomousControlButton;
@@ -42,7 +42,14 @@ public class MainActivity extends Activity {
         autonomousControlButton = (Button) findViewById(R.id.autonomousControlButton);
         networkControlButton = (Button) findViewById(R.id.networkControlButton);
 
-        tangoSerialConnection = TangoSerialConnection.getInstance();
+        //tangoSerialConnection = TangoSerialConnection.getInstance();
+
+        // This is a thread
+        //tangoSerialConnection = TangoSerialConnection.INSTANCE.init(getApplicationContext());
+
+        //Bundle usbThreadBundle = new Bundle();
+        //usbThreadBundle.putSerializable(tangoSerialConnection);
+
         //connectionTextView = (TextView) findViewById(R.id.connectionTextView);
         //connectionTextView.setText("Not connected...");
 
@@ -59,7 +66,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start manual control activity
                 Intent manualControlIntent = new Intent(MainActivity.this, ManualControlActivity.class);
-                manualControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
+                //manualControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(manualControlIntent);
             }
         });
@@ -69,7 +76,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start autonomous control activity
                 Intent autonomousControlIntent = new Intent(MainActivity.this, AutonomousControlActivity.class);
-                autonomousControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
+                //autonomousControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(autonomousControlIntent);
             }
         });
@@ -79,7 +86,7 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 // Start network control activity
                 Intent networkControlIntent = new Intent(MainActivity.this, NetworkControlActivity.class);
-                networkControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
+                //networkControlIntent.putExtra("TangoSerialConnection", tangoSerialConnection);
                 MainActivity.this.startActivity(networkControlIntent);
             }
         });
