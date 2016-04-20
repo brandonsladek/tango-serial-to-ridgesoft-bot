@@ -49,11 +49,6 @@ public class NetworkControlActivity extends Activity {
     private TextView poseDataTextView;
     Handler updateConversationHandler;
     Thread serverThread = null;
-    private float[] rotationFloats;
-    float x;
-    float y;
-    float z;
-    float w;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -94,7 +89,6 @@ public class NetworkControlActivity extends Activity {
         if (isLearningMode) {
             // Set learning mode to config.
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
-
         }
 
         // Check for Load ADF/Constant Space relocalization mode
@@ -104,17 +98,8 @@ public class NetworkControlActivity extends Activity {
             // Returns a list of ADFs with their UUIDs
             fullUUIDList = tango.listAreaDescriptions();
 
-            // Load the ADF named bestAdf
+            // Load the most recent ADF
             if (fullUUIDList.size() > 0) {
-//                for (int i = 0; i < fullUUIDList.size(); i++) {
-//                    String uuid = fullUUIDList.get(i);
-//                    String name = getName(uuid);
-//                    if (name != null) {
-//                        if (name.equals("bestAdf")) {
-//                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
-//                        }
-//                    }
-//                }
                 config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
                         fullUUIDList.get(fullUUIDList.size()-1));
             }
@@ -226,7 +211,7 @@ public class NetworkControlActivity extends Activity {
         super.onResume();
 
         // Reset pose data and start counting from resume.
-        //initializePoseData();
+        initializePoseData();
 
         // Clear the relocalization state: we don't know where the device has been since our app was paused.
         mIsRelocalized = false;
@@ -391,7 +376,7 @@ public class NetworkControlActivity extends Activity {
 
     private void goToLocation(TangoPoseData currentPose, double[] target) {
 
-        NavigationLogic navigationLogic = new NavigationLogic();
+        //NavigationLogic navigationLogic = new NavigationLogic();
 
         char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
         boolean timeToStop = false;

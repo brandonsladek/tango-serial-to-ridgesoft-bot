@@ -84,19 +84,19 @@ public class TangoSerialConnection implements Runnable, Serializable {
             public void handleMessage(Message msg) {
                 switch(msg.getData().getChar("COMMAND_VALUE")) {
                     case CommandValues.MOVE_FORWARD:
-                        commandRobot('f');
+                        commandRobot(CommandValues.MOVE_FORWARD);
                         break;
                     case CommandValues.MOVE_REVERSE:
-                        commandRobot('b');
+                        commandRobot(CommandValues.MOVE_REVERSE);
                         break;
                     case CommandValues.MOVE_LEFT:
-                        commandRobot('l');
+                        commandRobot(CommandValues.MOVE_LEFT);
                         break;
                     case CommandValues.MOVE_RIGHT:
-                        commandRobot('r');
+                        commandRobot(CommandValues.MOVE_RIGHT);
                         break;
                     case CommandValues.MOVE_STOP:
-                        commandRobot('s');
+                        commandRobot(CommandValues.MOVE_STOP);
                         break;
                     default:
                         Log.w(TANGO_SERIAL_CONNECTION_THREAD, "Unexpected value sent to TangoSerialConnection handler!");

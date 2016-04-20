@@ -32,7 +32,7 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = true;
-    private boolean mIsConstantSpaceRelocalize = true;
+    private boolean mIsConstantSpaceRelocalize = false;
     private TangoPoseData currentPose;
     private final Object mSharedLock = new Object();
 

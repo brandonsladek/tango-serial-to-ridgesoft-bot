@@ -25,18 +25,19 @@ import java.util.ArrayList;
 
 public class AutonomousControlActivity extends Activity {
 
-    private Button stopButton;
-
     private TangoSerialConnection tangoSerialConnection;
-    private NavigationLogic navigationLogic;
+    private TangoPoseData currentPose;
+    private TangoPoseData[] mPoses;
     private Tango mTango;
     private TangoConfig mConfig;
+
+    private final Object mSharedLock = new Object();
+    private NavigationLogic navigationLogic;
+
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = false;
     private boolean mIsConstantSpaceRelocalize = true;
-    private TangoPoseData currentPose;
-    private TangoPoseData[] mPoses;
-    private final Object mSharedLock = new Object();
+
     private TextView poseDataTextView;
     private TextView connectionTextView;
     private TextView adfUUIDTextView;
@@ -45,14 +46,10 @@ public class AutonomousControlActivity extends Activity {
 
     private double[] targetLocation = new double[]{-3.0, 4.0, 1.0};
 
-    private float[] rotationFloats;
-    float x;
-    float y;
-    float z;
-    float w;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        Button stopButton;
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_autonomous_control);

@@ -1,10 +1,6 @@
 package com.example.tangoserialapplication;
 
 import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-
-import com.google.atap.tangoservice.TangoPoseData;
 
 /**
  * Created by brandonsladek on 3/30/16.
@@ -119,7 +115,7 @@ public class NavigationLogic {
 
     private char getDirectionCommand(double ourRotation, double goRotation, double distance) {
 
-        if (distance < 0.5) {
+        if (distance < 0.1) {
             // Tell the robot to stop
             return 's';
         } else {
