@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">TangoSerialApplication</string>
     <string name="action_settings">Settings</string>
+    <string name="save_adf_failed_toast_format">"Failed to save ADF '%1$s'."</string>
+    <string name="save_adf_success_toast_format">"Saved ADF '%1$s' (%2$s)."</string>
 </resources>

@@ -45,4 +45,13 @@
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="25dp"/>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Localization Status"
+        android:id="@+id/ac_localizationStatusTextView"
+        android:layout_alignParentTop="true"
+        android:layout_alignEnd="@+id/ac_poseDataTextView"
+        android:layout_marginTop="32dp" />
+
 </RelativeLayout>

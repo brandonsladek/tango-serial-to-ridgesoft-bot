@@ -7,24 +7,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.google.atap.tangoservice.Tango;
-
 /**
  * Created by brandonsladek on 4/12/16.
  */
 
 public class ManualControlActivity extends Activity {
-
-    //public ManualControlActivity context = this;
-
-//    private Button forwardButton;
-//    private Button backButton;
-//    private Button leftButton;
-//    private Button rightButton;
-//    private Button stopButton;
-//
-//    private TextView connectionTextView;
-//    private TextView poseDataTextView;
 
     private TangoSerialConnection tangoSerialConnection;
 

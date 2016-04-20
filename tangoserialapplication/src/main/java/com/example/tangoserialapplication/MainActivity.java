@@ -13,12 +13,13 @@ public class MainActivity extends Activity {
 
     private TangoSerialConnection tangoSerialConnection;
 
-    private Button manualControlButton;
-    private Button autonomousControlButton;
-    private Button networkControlButton;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        Button manualControlButton;
+        Button autonomousControlButton;
+        Button networkControlButton;
+        Button recordAdfButton;
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -35,6 +36,7 @@ public class MainActivity extends Activity {
         manualControlButton = (Button) findViewById(R.id.manualControlButton);
         autonomousControlButton = (Button) findViewById(R.id.autonomousControlButton);
         networkControlButton = (Button) findViewById(R.id.networkControlButton);
+        recordAdfButton = (Button) findViewById(R.id.recordAdfButton);
 
         manualControlButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -60,6 +62,15 @@ public class MainActivity extends Activity {
                 // Start network control activity
                 Intent networkControlIntent = new Intent(MainActivity.this, NetworkControlActivity.class);
                 MainActivity.this.startActivity(networkControlIntent);
+            }
+        });
+
+        recordAdfButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Start ADF record activity
+                Intent recordAdfIntent = new Intent(MainActivity.this, ADFRecordActivity.class);
+                MainActivity.this.startActivity(recordAdfIntent);
             }
         });
     }

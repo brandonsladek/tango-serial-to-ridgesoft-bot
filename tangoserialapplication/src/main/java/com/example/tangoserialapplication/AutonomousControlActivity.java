@@ -41,6 +41,7 @@ public class AutonomousControlActivity extends Activity {
     private TextView connectionTextView;
     private TextView adfUUIDTextView;
     private TextView directionCommandTextView;
+    private TextView localizationStatusTextView;
 
     private double[] targetLocation = new double[]{-3.0, 4.0, 1.0};
 
@@ -61,6 +62,8 @@ public class AutonomousControlActivity extends Activity {
         connectionTextView = (TextView) findViewById(R.id.ac_connectionTextView);
         adfUUIDTextView = (TextView) findViewById(R.id.ac_adfUUIDTextView);
         directionCommandTextView = (TextView) findViewById(R.id.ac_directionCommandTextView);
+        localizationStatusTextView = (TextView) findViewById(R.id.ac_localizationStatusTextView);
+        localizationStatusTextView.setText("Not localized!");
 
         // Start thread for usb serial connection
         tangoSerialConnection = new TangoSerialConnection(this);
@@ -122,6 +125,8 @@ public class AutonomousControlActivity extends Activity {
     private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
 
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
+        //config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
+        //config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
         // Check if learning mode
         if (isLearningMode) {
@@ -219,25 +224,23 @@ public class AutonomousControlActivity extends Activity {
                 // the data.
                 synchronized (mSharedLock) {
 
-//                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
-//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
-//                        mPoses[0] = pose;
-//
-//                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE
-//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
-//                        mPoses[1] = pose;
-//
-//                    } else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
-//                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
-//                        mPoses[2] = pose;
-//
-//                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
-//                            mIsRelocalized = true;
-//                        } else {
-//                            mIsRelocalized = false;
-//                        }
-//                    }
-                    currentPose = pose;
+                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
+                        // Process new ADF to device pose data.
+                        currentPose = pose;
+                    }
+                    else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
+                        // Process new localization.
+                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
+                            mIsRelocalized = true;
+                            localizationStatusTextView.setText("Localized.");
+                        } else {
+                            mIsRelocalized = false;
+                            localizationStatusTextView.setText("NOT localized!");
+                        }
+                    }
+                    //currentPose = pose;
                 }
 
                 runOnUiThread(new Runnable() {
@@ -257,7 +260,7 @@ public class AutonomousControlActivity extends Activity {
                     }
                 });
 
-                if (navigationLogic != null) {
+                if (navigationLogic != null && currentPose != null) {
                     // calling this method causes it to crash every time, there must be a bug in this method...
                     final char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, targetLocation);
                     runOnUiThread(new Runnable() {
