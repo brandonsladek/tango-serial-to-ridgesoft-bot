@@ -20,6 +20,10 @@ public class NavigationLogic {
     // Constructor
     public NavigationLogic() {}
 
+    public NavigationLogic(Handler handler) {
+        this.handler = handler;
+    }
+
     public NavigationLogic(double[] targetLocation) {
         this.targetLocation = targetLocation;
     }
@@ -31,9 +35,7 @@ public class NavigationLogic {
 
         double sumOfSquares = Math.pow(xDiff, 2) + Math.pow(yDiff, 2);
 
-        double distance = Math.sqrt(sumOfSquares);
-
-        return distance;
+        return Math.sqrt(sumOfSquares);
     }
 
     public char navigate(double[] translation, double[] rotation, double[] target) {
@@ -42,9 +44,9 @@ public class NavigationLogic {
         double ourY = translation[1];
         double ourZ = translation[2];
 
-        float radiusDiff = 2.0f;
-        float xDiff = (float) (radiusDiff * Math.cos (45.0));
-        float yDiff = (float) (radiusDiff * Math.sin (45.0));
+        double radiusDiff = 2.0;
+        double xDiff = radiusDiff * Math.cos (45.0);
+        double yDiff = radiusDiff * Math.sin (45.0);
 
         double[] north = new double[]{ourX, ourY + radiusDiff, ourZ};
         double[] northEast = new double[]{ourX + xDiff, ourY + yDiff, ourZ};
@@ -85,8 +87,8 @@ public class NavigationLogic {
             }
         }
 
-        double ourRotation = (int) getPoseRotationDegrees(translation);
-        double goRotation = convertIndexToYRotationValue (indexWithMinimumDistance);
+        double ourRotation = (int) getPoseRotationDegrees(rotation);
+        double goRotation = convertIndexToYRotationValue(indexWithMinimumDistance);
         double currentDistance = getDistance(translation, target);
 
         return getDirectionCommand(ourRotation, goRotation, currentDistance);
@@ -146,12 +148,13 @@ public class NavigationLogic {
         }
     }
 
-    private double getPoseRotationDegrees(double[] translation) {
+    private double getPoseRotationDegrees(double[] rotation) {
 
-        double x = translation[0];
-        double y = translation[1];
-        double z = translation[2];
-        double w = translation[3];
+        double x = rotation[0];
+        double y = rotation[1];
+        double z = rotation[2];
+        double w = rotation[3];
+
         double t = y*x+z*w;
         int pole;
         double rollRadians;

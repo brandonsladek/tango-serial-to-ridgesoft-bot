@@ -32,12 +32,13 @@ public class NetworkControlActivity extends Activity {
     private ServerSocket serverSocket;
     private TextView mostRecentMessageTextView;
     private TangoSerialConnection tangoSerialConnection;
+    private NavigationLogic navigationLogic;
     private NetworkControlActivity context = this;
     private int SERVERPORT = 5010;
     private String landmark1Name;
     private String landmark2Name;
-    private float[] landmark1;
-    private float[] landmark2;
+    private double[] landmark1;
+    private double[] landmark2;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
@@ -63,6 +64,8 @@ public class NetworkControlActivity extends Activity {
         mostRecentMessageTextView = (TextView) findViewById(R.id.nc_mostRecentMessageTextView);
 
         updateConversationHandler = new Handler();
+
+        navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
         mTango = new Tango(this);
@@ -336,17 +339,17 @@ public class NetworkControlActivity extends Activity {
 
                         if (landmark1Name == null) {
                             landmark1Name = commands[1];
-                            landmark1 = currentPose.getTranslationAsFloats();
+                            landmark1 = currentPose.translation;
                         } else {
                             landmark2Name = commands[1];
-                            landmark2 = currentPose.getTranslationAsFloats();
+                            landmark2 = currentPose.translation;
                         }
 
                     } else if (read.equals("goto1")) {
-                        goToLocation(landmark1);
+                        goToLocation(currentPose, landmark1);
 
                     } else if (read.equals("goto2")) {
-                        goToLocation(landmark2);
+                        goToLocation(currentPose, landmark2);
 
                     } else {
                         if (tangoSerialConnection != null) {
@@ -386,7 +389,31 @@ public class NetworkControlActivity extends Activity {
         }
     }
 
-    private void goToLocation(float[] targetLocation) {
+    private void goToLocation(TangoPoseData currentPose, double[] target) {
+
+        NavigationLogic navigationLogic = new NavigationLogic();
+
+        char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
+        boolean timeToStop = false;
+
+        while (!timeToStop) {
+
+            if (command == 's') {
+                timeToStop = true;
+            }
+
+            final char comm = command;
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mostRecentMessageTextView.setText(mostRecentMessageTextView.getText().toString()+"Command: " + comm);
+                }
+            });
+
+            sendCommandToHandler(command);
+            command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
+        }
 
     }
 

@@ -40,8 +40,9 @@ public class AutonomousControlActivity extends Activity {
     private TextView poseDataTextView;
     private TextView connectionTextView;
     private TextView adfUUIDTextView;
+    private TextView directionCommandTextView;
 
-    private double[] targetLocation = new double[]{-3.0, 4.0, 0.0};
+    private double[] targetLocation = new double[]{-3.0, 4.0, 1.0};
 
     private float[] rotationFloats;
     float x;
@@ -59,6 +60,7 @@ public class AutonomousControlActivity extends Activity {
         poseDataTextView = (TextView) findViewById(R.id.ac_poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.ac_connectionTextView);
         adfUUIDTextView = (TextView) findViewById(R.id.ac_adfUUIDTextView);
+        directionCommandTextView = (TextView) findViewById(R.id.ac_directionCommandTextView);
 
         // Start thread for usb serial connection
         tangoSerialConnection = new TangoSerialConnection(this);
@@ -235,7 +237,6 @@ public class AutonomousControlActivity extends Activity {
 //                            mIsRelocalized = false;
 //                        }
 //                    }
-
                     currentPose = pose;
                 }
 
@@ -256,6 +257,17 @@ public class AutonomousControlActivity extends Activity {
                     }
                 });
 
+                if (navigationLogic != null) {
+                    // calling this method causes it to crash every time, there must be a bug in this method...
+                    final char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, targetLocation);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            directionCommandTextView.setText(command);
+                        }
+                    });
+                    sendCommandToHandler(command);
+                }
             }
 
             @Override

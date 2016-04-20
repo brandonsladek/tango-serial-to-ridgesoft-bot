@@ -36,4 +36,13 @@
         android:layout_alignStart="@+id/ac_poseDataTextView"
         android:layout_marginBottom="77dp" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Direction Command"
+        android:id="@+id/ac_directionCommandTextView"
+        android:layout_above="@+id/ac_connectionTextView"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="25dp"/>
+
 </RelativeLayout>
