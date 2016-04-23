@@ -6,7 +6,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Start"
-        android:id="@+id/startButton"
+        android:id="@+id/adf_startButton"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
         android:layout_marginTop="53dp" />
@@ -15,8 +15,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Save ADF"
-        android:id="@+id/saveAdfButton"
-        android:layout_below="@+id/startButton"
+        android:id="@+id/adf_saveAdfButton"
+        android:layout_below="@+id/adf_startButton"
         android:layout_alignParentStart="true"
         android:layout_marginTop="67dp" />
 </RelativeLayout>

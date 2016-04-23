@@ -1,38 +1,10 @@
 package com.example.tangoserialapplication;
 
-import android.os.Handler;
-
 /**
  * Created by brandonsladek on 3/30/16.
  */
 
 public class NavigationLogic {
-
-    private double[] hardcodedLocation = new double[]{-3.0, 4.0, 1.0};
-    private double[] targetLocation;
-
-    public Handler handler;
-
-    // Constructor
-    public NavigationLogic() {}
-
-    public NavigationLogic(Handler handler) {
-        this.handler = handler;
-    }
-
-    public NavigationLogic(double[] targetLocation) {
-        this.targetLocation = targetLocation;
-    }
-
-    public double getDistance(double[] ourLocation, double[] goLocation) {
-
-        double xDiff = Math.abs(ourLocation[0] - goLocation[0]);
-        double yDiff = Math.abs(ourLocation[1] - goLocation[1]);
-
-        double sumOfSquares = Math.pow(xDiff, 2) + Math.pow(yDiff, 2);
-
-        return Math.sqrt(sumOfSquares);
-    }
 
     public char navigate(double[] translation, double[] rotation, double[] target) {
 
@@ -90,7 +62,77 @@ public class NavigationLogic {
         return getDirectionCommand(ourRotation, goRotation, currentDistance);
     }
 
-    private double convertIndexToYRotationValue(int index) {
+    public NavigationInfo navigationInfo(double[] translation, double[] rotation, double[] target) {
+
+        double ourX = translation[0];
+        double ourY = translation[1];
+        double ourZ = translation[2];
+
+        double radiusDiff = 2.0;
+        double xDiff = radiusDiff * Math.cos (45.0);
+        double yDiff = radiusDiff * Math.sin (45.0);
+
+        double[] north = new double[]{ourX, ourY + radiusDiff, ourZ};
+        double[] northEast = new double[]{ourX + xDiff, ourY + yDiff, ourZ};
+        double[] east = new double[]{ourX + radiusDiff, ourY, ourZ};
+        double[] southEast = new double[]{ourX + xDiff, ourY - yDiff, ourZ};
+        double[] south = new double[]{ourX, ourY - radiusDiff, ourZ};
+        double[] southWest = new double[]{ourX - xDiff, ourY - yDiff, ourZ};
+        double[] west = new double[]{ourX - radiusDiff, ourY, ourZ};
+        double[] northWest = new double[]{ourX - xDiff, ourY + yDiff, ourZ};
+
+        double[] distances = new double[8];
+
+        double distanceNorth = getDistance(north, target);
+        double distanceNorthEast = getDistance(northEast, target);
+        double distanceEast = getDistance(east, target);
+        double distanceSouthEast = getDistance(southEast, target);
+        double distanceSouth = getDistance(south, target);
+        double distanceSouthWest = getDistance(southWest, target);
+        double distanceWest = getDistance(west, target);
+        double distanceNorthWest = getDistance(northWest, target);
+
+        distances [0] = distanceNorth;
+        distances [1] = distanceNorthEast;
+        distances [2] = distanceEast;
+        distances [3] = distanceSouthEast;
+        distances [4] = distanceSouth;
+        distances [5] = distanceSouthWest;
+        distances [6] = distanceWest;
+        distances [7] = distanceNorthWest;
+
+        int indexWithMinimumDistance = 8;
+        double minimumDistance = Double.MAX_VALUE;
+
+        for (int i = 0; i < distances.length; i++) {
+            if (distances [i] < minimumDistance) {
+                indexWithMinimumDistance = i;
+                minimumDistance = distances[i];
+            }
+        }
+
+        int ourRotation = (int) getPoseRotationDegrees(rotation);
+        int goRotation = convertIndexToYRotationValue(indexWithMinimumDistance);
+        double currentDistance = getDistance(translation, target);
+
+        char command = getDirectionCommand(ourRotation, goRotation, currentDistance);
+
+        NavigationInfo navigationInfo = new NavigationInfo(ourRotation, goRotation, command);
+
+        return navigationInfo;
+    }
+
+    private double getDistance(double[] ourLocation, double[] goLocation) {
+
+        double xDiff = Math.abs(ourLocation[0] - goLocation[0]);
+        double yDiff = Math.abs(ourLocation[1] - goLocation[1]);
+
+        double sumOfSquares = Math.pow(xDiff, 2) + Math.pow(yDiff, 2);
+
+        return Math.sqrt(sumOfSquares);
+    }
+
+    private int convertIndexToYRotationValue(int index) {
         switch (index) {
             case 0:
                 return 0;
@@ -119,7 +161,7 @@ public class NavigationLogic {
             // Tell the robot to stop
             return 's';
         } else {
-            if (ourRotation < goRotation + 15 && ourRotation > goRotation - 15) {
+            if (ourRotation < goRotation + 22.5 && ourRotation > goRotation - 22.5) {
                 // Tell the robot to go forward
                 return 'f';
             } else {

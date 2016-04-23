@@ -32,6 +32,7 @@ public class NetworkControlActivity extends Activity {
     private ServerSocket serverSocket;
     private TextView mostRecentMessageTextView;
     private TangoSerialConnection tangoSerialConnection;
+    private TextToSpeechThread tts;
     private NavigationLogic navigationLogic;
     private NetworkControlActivity context = this;
     private int SERVERPORT = 5010;
@@ -47,8 +48,10 @@ public class NetworkControlActivity extends Activity {
     private TangoPoseData currentPose;
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
+    private TextView currentCommandTextView;
     Handler updateConversationHandler;
     Thread serverThread = null;
+    Thread ttsThread;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -57,6 +60,8 @@ public class NetworkControlActivity extends Activity {
         setContentView(R.layout.activity_network_control);
 
         mostRecentMessageTextView = (TextView) findViewById(R.id.nc_mostRecentMessageTextView);
+        poseDataTextView = (TextView) findViewById(R.id.nc_poseDataTextView);
+        currentCommandTextView = (TextView) findViewById(R.id.nc_currentCommandTextView);
 
         updateConversationHandler = new Handler();
 
@@ -70,6 +75,11 @@ public class NetworkControlActivity extends Activity {
 
         this.serverThread = new Thread(new ServerThread());
         this.serverThread.start();
+
+        tts = TextToSpeechThread.getInstance();
+        tts.setContext(getApplicationContext());
+        ttsThread = new Thread(tts);
+        ttsThread.start();
 
     }
 
@@ -174,22 +184,22 @@ public class NetworkControlActivity extends Activity {
                     currentPose = pose;
                 }
 
-//                runOnUiThread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        if (currentPose != null) {
-//
-//                            double xPos = currentPose.translation[0];
-//                            double yPos = currentPose.translation[1];
-//
-//                            String poseString = "X position: " +  round(xPos) +
-//                                    "\nY position: " + round(yPos) +
-//                                    "\nRotation: " + (int) getPoseRotationDegrees(currentPose.getRotationAsFloats());
-//
-//                            //poseDataTextView.setText(poseString);
-//                        }
-//                    }
-//                });
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (currentPose != null) {
+
+                            double xPos = currentPose.translation[0];
+                            double yPos = currentPose.translation[1];
+
+                            String poseString = "X position: " +  round(xPos) +
+                                    "\nY position: " + round(yPos) +
+                                    "\nRotation: " + (int) getPoseRotationDegrees(currentPose.rotation);
+
+                            poseDataTextView.setText(poseString);
+                        }
+                    }
+                });
             }
 
             @Override
@@ -197,6 +207,35 @@ public class NetworkControlActivity extends Activity {
                 // We will use this method for dealing with the camera
             }
         });
+    }
+
+    private double getPoseRotationDegrees(double[] rotation) {
+
+        double x = rotation[0];
+        double y = rotation[1];
+        double z = rotation[2];
+        double w = rotation[3];
+
+        double t = y*x+z*w;
+        int pole;
+        double rollRadians;
+
+        if (t > 0.499f) {
+            pole = 1;
+        } else if (t < -0.499f) {
+            pole = -1;
+        } else {
+            pole = 0;
+        }
+
+        if (pole == 0) {
+            rollRadians = Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
+        } else {
+            rollRadians = pole * 2f * Math.atan2(y, w);
+        }
+
+        // 0 - 360
+        return Math.toDegrees(rollRadians) + 180;
     }
 
 
@@ -325,20 +364,22 @@ public class NetworkControlActivity extends Activity {
                         if (landmark1Name == null) {
                             landmark1Name = commands[1];
                             landmark1 = currentPose.translation;
+                            sendSpeakString("Target 1 recorded");
                         } else {
                             landmark2Name = commands[1];
                             landmark2 = currentPose.translation;
+                            sendSpeakString("Target 2 recorded");
                         }
 
                     } else if (read.equals("goto1")) {
-                        goToLocation(currentPose, landmark1);
+                        goToLocation(landmark1);
 
                     } else if (read.equals("goto2")) {
-                        goToLocation(currentPose, landmark2);
+                        goToLocation(landmark2);
 
                     } else {
                         if (tangoSerialConnection != null) {
-                            sendCommandToHandler(read.charAt(0));
+                            sendRobotCommand(read.charAt(0));
                         }
 
                     }
@@ -374,40 +415,67 @@ public class NetworkControlActivity extends Activity {
         }
     }
 
-    private void goToLocation(TangoPoseData currentPose, double[] target) {
+    private void goToLocation(final double[] target) {
 
-        //NavigationLogic navigationLogic = new NavigationLogic();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
 
-        char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
-        boolean timeToStop = false;
+                sendSpeakString("Starting");
 
-        while (!timeToStop) {
+                Long lastTime = System.currentTimeMillis();
+                char previousCommand = 'z';
+                char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
+                boolean timeToStop = false;
 
-            if (command == 's') {
-                timeToStop = true;
-            }
+                while (!timeToStop) {
 
-            final char comm = command;
+                    if (System.currentTimeMillis() - lastTime > 100) {
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mostRecentMessageTextView.setText(mostRecentMessageTextView.getText().toString()+"Command: " + comm);
+                        if (command == 's') {
+                            timeToStop = true;
+                        }
+
+                        lastTime = System.currentTimeMillis();
+                        final char comm = command;
+
+                        if (command != previousCommand) {
+                            sendRobotCommand(command);
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    currentCommandTextView.setText("Current command: " + comm);
+                                }
+                            });
+                        }
+
+                        previousCommand = command;
+                        command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
+                    }
                 }
-            });
 
-            sendCommandToHandler(command);
-            command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
-        }
+                sendSpeakString("Engaging target");
+
+            }
+        }).start();
 
     }
 
-    private void sendCommandToHandler(char commandValue) {
+    private void sendRobotCommand(char commandValue) {
         Message msg = tangoSerialConnection.handler.obtainMessage();
         Bundle bundle = new Bundle();
         bundle.putChar("COMMAND_VALUE", commandValue);
         msg.setData(bundle);
         tangoSerialConnection.handler.sendMessage(msg);
+    }
+
+    private void sendSpeakString(String toSpeak) {
+        Message msg = tts.handler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putString("SPEAK_TEXT", toSpeak);
+        msg.setData(bundle);
+        tts.handler.sendMessage(msg);
     }
 
 }

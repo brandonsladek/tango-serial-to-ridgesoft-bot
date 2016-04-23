@@ -103,3 +103,16 @@ public class MainActivity extends Activity {
 // TangoCameraPreview, get camera view from R.id.cameraVIew from xml file
 // onFrameAvailable next to onPoseAvailable in TangoListener
 // android network permissions for camera use
+
+// Java Support Library
+// depth data with interpolation
+// download tango support java lib (aar) file
+// add dependencies compile java support lib in build.gradle file
+
+// colorCameraTXyzIj is the pose for depth data
+
+// want rgbPoint, that gives you the pose information
+
+// depth data is relatively steady until you look at an obstacle then it changes drastically
+
+// y will stay same, scan across x via for loop and look for drastic changes, that means you're looking at an obstacle

@@ -40,3 +40,5 @@
     </application>
 
 </manifest>
+
+<!-- Add in override for tango support library -->

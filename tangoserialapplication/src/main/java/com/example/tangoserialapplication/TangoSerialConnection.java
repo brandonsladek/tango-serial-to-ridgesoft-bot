@@ -32,6 +32,21 @@ public class TangoSerialConnection implements Runnable, Serializable {
     public Handler handler;
     private String TANGO_SERIAL_CONNECTION_THREAD = "TANGO_SERIAL_CONNECTION_THREAD";
 
+    private static TangoSerialConnection instance;
+
+    private TangoSerialConnection() {}
+
+    public static TangoSerialConnection getInstance() {
+        if (instance == null) {
+            instance = new TangoSerialConnection();
+        }
+        return instance;
+    }
+
+    public void setUsbManager(UsbManager usbManager) {
+        this.usbManager = usbManager;
+    }
+
     public TangoSerialConnection(Activity activity) {
         usbManager = (UsbManager) activity.getSystemService(Context.USB_SERVICE);
     }
@@ -104,6 +119,9 @@ public class TangoSerialConnection implements Runnable, Serializable {
             }
         };
         Looper.loop();
+
     }
+
+
 
 }

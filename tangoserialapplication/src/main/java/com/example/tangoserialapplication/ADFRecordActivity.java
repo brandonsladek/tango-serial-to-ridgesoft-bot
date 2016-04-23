@@ -43,11 +43,11 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Button startButton = (Button) findViewById(R.id.startButton);
-        Button saveAdfButton = (Button) findViewById(R.id.saveAdfButton);
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_adf_record);
+
+        Button startButton = (Button) findViewById(R.id.adf_startButton);
+        Button saveAdfButton = (Button) findViewById(R.id.adf_saveAdfButton);
 
         startButton.setOnClickListener(this);
         saveAdfButton.setOnClickListener(this);
@@ -63,10 +63,10 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
     @Override
     public void onClick(View v) {
         switch(v.getId()) {
-            case R.id.startButton:
+            case R.id.adf_startButton:
                 // start recording adf
                 break;
-            case R.id.saveAdfButton:
+            case R.id.adf_saveAdfButton:
                 showSetADFNameDialog();
                 break;
             default:
@@ -154,7 +154,6 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
         if (isLearningMode) {
             // Set learning mode to config.
             config.putBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE, true);
-
         }
 
         // Check for Load ADF/Constant Space relocalization mode
@@ -166,15 +165,6 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
 
             // Load the ADF named bestAdf
             if (fullUUIDList.size() > 0) {
-//                for (int i = 0; i < fullUUIDList.size(); i++) {
-//                    String uuid = fullUUIDList.get(i);
-//                    String name = getName(uuid);
-//                    if (name != null) {
-//                        if (name.equals("bestAdf")) {
-//                            config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION, uuid);
-//                        }
-//                    }
-//                }
                 config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
                         fullUUIDList.get(fullUUIDList.size()-1));
             }

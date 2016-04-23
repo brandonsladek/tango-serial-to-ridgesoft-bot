@@ -7,17 +7,18 @@
         android:layout_height="wrap_content"
         android:text="Pose Data"
         android:id="@+id/ac_poseDataTextView"
-        android:layout_alignParentTop="true"
+        android:layout_below="@+id/ac_localizationStatusTextView"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="104dp" />
+        android:layout_marginTop="67dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Connection Status"
         android:id="@+id/ac_connectionTextView"
-        android:layout_centerVertical="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_alignTop="@+id/ac_adfUUIDTextView"
+        android:layout_toStartOf="@+id/ac_localizationStatusTextView"
+        android:layout_marginEnd="50dp"/>
 
     <Button
         android:layout_width="wrap_content"
@@ -25,33 +26,50 @@
         android:text="Stop"
         android:id="@+id/ac_stopButton"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_alignParentEnd="true" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="ADF Using"
         android:id="@+id/ac_adfUUIDTextView"
-        android:layout_above="@+id/ac_stopButton"
-        android:layout_alignStart="@+id/ac_poseDataTextView"
-        android:layout_marginBottom="77dp" />
+        android:layout_alignTop="@+id/ac_stopButton"
+        android:layout_alignStart="@+id/ac_poseDataTextView" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Direction Command"
         android:id="@+id/ac_directionCommandTextView"
-        android:layout_above="@+id/ac_connectionTextView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="25dp"/>
+        android:layout_alignParentTop="true"
+        android:layout_alignEnd="@+id/ac_connectionTextView"
+        android:layout_marginTop="51dp"
+        android:layout_marginEnd="50dp"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Localization Status"
         android:id="@+id/ac_localizationStatusTextView"
-        android:layout_alignParentTop="true"
-        android:layout_alignEnd="@+id/ac_poseDataTextView"
-        android:layout_marginTop="32dp" />
+        android:layout_below="@+id/ac_ourRotationTextView"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="121dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Our Rotation"
+        android:id="@+id/ac_ourRotationTextView"
+        android:layout_alignTop="@+id/ac_directionCommandTextView"
+        android:layout_alignStart="@+id/ac_poseDataTextView"
+        android:layout_marginRight="50dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Go Rotation"
+        android:id="@+id/ac_goRotationTextView"
+        android:layout_alignTop="@+id/ac_ourRotationTextView"
+        android:layout_toEndOf="@+id/ac_localizationStatusTextView" />
 
 </RelativeLayout>

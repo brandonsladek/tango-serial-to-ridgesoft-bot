@@ -57,8 +57,7 @@
         android:layout_height="wrap_content"
         android:text="Record ADF"
         android:id="@+id/recordAdfButton"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginBottom="53dp" />
+        android:layout_above="@+id/networkControlButton"
+        android:layout_toEndOf="@+id/selectControlText" />
 
 </RelativeLayout>

@@ -1,6 +1,8 @@
 package com.example.tangoserialapplication;
 
 import android.app.Activity;
+import android.content.Context;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Message;
 import android.view.View;
@@ -18,29 +20,23 @@ public class ManualControlActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        TextView connectionTextView;
-        TextView poseDataTextView;
-
-        Button forwardButton;
-        Button backButton;
-        Button leftButton;
-        Button rightButton;
-        Button stopButton;
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_manual_control);
 
-        forwardButton = (Button) findViewById(R.id.forwardButton);
-        backButton = (Button) findViewById(R.id.backButton);
-        leftButton = (Button) findViewById(R.id.leftButton);
-        rightButton = (Button) findViewById(R.id.rightButton);
-        stopButton = (Button) findViewById(R.id.stopButton);
+        TextView connectionTextView;
+        TextView poseDataTextView;
+
+        Button forwardButton = (Button) findViewById(R.id.forwardButton);
+        Button backButton = (Button) findViewById(R.id.backButton);
+        Button leftButton = (Button) findViewById(R.id.leftButton);
+        Button rightButton = (Button) findViewById(R.id.rightButton);
+        Button stopButton = (Button) findViewById(R.id.stopButton);
 
         poseDataTextView = (TextView) findViewById(R.id.poseDataTextView);
         connectionTextView = (TextView) findViewById(R.id.connectionTextView);
 
-        // Start thread for usb connection to robot
-        tangoSerialConnection = new TangoSerialConnection(this);
+        tangoSerialConnection = TangoSerialConnection.getInstance();
+        tangoSerialConnection.setUsbManager((UsbManager) this.getSystemService(Context.USB_SERVICE));
         Thread thread = new Thread(tangoSerialConnection);
         thread.start();
 
@@ -50,31 +46,31 @@ public class ManualControlActivity extends Activity {
             forwardButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sendCommandToHandler('f');
+                    sendRobotCommand('f');
                 }
             });
             backButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sendCommandToHandler('b');
+                    sendRobotCommand('b');
                 }
             });
             leftButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sendCommandToHandler('l');
+                    sendRobotCommand('l');
                 }
             });
             rightButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sendCommandToHandler('r');
+                    sendRobotCommand('r');
                 }
             });
             stopButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    sendCommandToHandler('s');
+                    sendRobotCommand('s');
                 }
             });
         } else {
@@ -82,7 +78,7 @@ public class ManualControlActivity extends Activity {
         }
     }
 
-    private void sendCommandToHandler(char commandValue) {
+    private void sendRobotCommand(char commandValue) {
         Message msg = tangoSerialConnection.handler.obtainMessage();
         Bundle bundle = new Bundle();
         bundle.putChar("COMMAND_VALUE", commandValue);
