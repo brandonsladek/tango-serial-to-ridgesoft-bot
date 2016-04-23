@@ -1,75 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Pose Data"
-        android:id="@+id/ac_poseDataTextView"
-        android:layout_below="@+id/ac_localizationStatusTextView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="67dp" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connection Status"
-        android:id="@+id/ac_connectionTextView"
-        android:layout_alignTop="@+id/ac_adfUUIDTextView"
-        android:layout_toStartOf="@+id/ac_localizationStatusTextView"
-        android:layout_marginEnd="50dp"/>
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="200dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="30dp"
+                android:text="Text1"
+                android:id="@+id/ac_adfUUIDTextView"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
+                android:text="Text2"
+                android:id="@+id/ac_ourRotationTextView"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
+                android:text="Text3"
+                android:id="@+id/ac_goRotationTextView"/>
+        </LinearLayout>
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Stop"
-        android:id="@+id/ac_stopButton"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="200dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="30dp"
+                android:text="Text4"
+                android:id="@+id/ac_directionCommandTextView"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
+                android:text="Text5"
+                android:id="@+id/ac_localizationStatusTextView"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
+                android:text="Text6"
+                android:id="@+id/ac_poseDataTextView"/>
+        </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="ADF Using"
-        android:id="@+id/ac_adfUUIDTextView"
-        android:layout_alignTop="@+id/ac_stopButton"
-        android:layout_alignStart="@+id/ac_poseDataTextView" />
+    </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Direction Command"
-        android:id="@+id/ac_directionCommandTextView"
-        android:layout_alignParentTop="true"
-        android:layout_alignEnd="@+id/ac_connectionTextView"
-        android:layout_marginTop="51dp"
-        android:layout_marginEnd="50dp"/>
+    <ScrollView
+        android:layout_width="300dp"
+        android:layout_height="132dp">
+        <TextView
+            android:id="@+id/dumpText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ScrollText"/>
+    </ScrollView>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Localization Status"
-        android:id="@+id/ac_localizationStatusTextView"
-        android:layout_below="@+id/ac_ourRotationTextView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="121dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Our Rotation"
-        android:id="@+id/ac_ourRotationTextView"
-        android:layout_alignTop="@+id/ac_directionCommandTextView"
-        android:layout_alignStart="@+id/ac_poseDataTextView"
-        android:layout_marginRight="50dp"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Go Rotation"
-        android:id="@+id/ac_goRotationTextView"
-        android:layout_alignTop="@+id/ac_ourRotationTextView"
-        android:layout_toEndOf="@+id/ac_localizationStatusTextView" />
-
-</RelativeLayout>
+</LinearLayout>

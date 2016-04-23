@@ -41,7 +41,6 @@ public class AutonomousControlActivity extends Activity {
     private boolean mIsConstantSpaceRelocalize = true;
 
     private TextView poseDataTextView;
-    private TextView connectionTextView;
     private TextView adfUUIDTextView;
     private TextView directionCommandTextView;
     private TextView localizationStatusTextView;
@@ -50,7 +49,8 @@ public class AutonomousControlActivity extends Activity {
 
     Long lastUpdateTime;
 
-    private double[] targetLocation = new double[]{-3.0, 4.0, 1.0};
+    // Red X in middle of classroom floor
+    private double[] targetLocation = new double[]{6.4, 3.8, 1.0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +58,8 @@ public class AutonomousControlActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_autonomous_control);
 
-        // Buttons and TextViews!
-        Button stopButton = (Button) findViewById(R.id.ac_stopButton);
+        // TextViews!
         poseDataTextView = (TextView) findViewById(R.id.ac_poseDataTextView);
-        connectionTextView = (TextView) findViewById(R.id.ac_connectionTextView);
         adfUUIDTextView = (TextView) findViewById(R.id.ac_adfUUIDTextView);
         directionCommandTextView = (TextView) findViewById(R.id.ac_directionCommandTextView);
         ourRotationTextView = (TextView) findViewById(R.id.ac_ourRotationTextView);
@@ -75,8 +73,6 @@ public class AutonomousControlActivity extends Activity {
         serialThread = new Thread(tangoSerialConnection);
         serialThread.start();
 
-        connectionTextView.setText("Connected");
-
         navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
@@ -84,13 +80,6 @@ public class AutonomousControlActivity extends Activity {
 
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
-
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onDestroy();
-            }
-        });
 
         lastUpdateTime = System.currentTimeMillis();
 
@@ -114,8 +103,6 @@ public class AutonomousControlActivity extends Activity {
     private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
 
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_MOTIONTRACKING, true);
-        //config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
         // Check if learning mode
         if (isLearningMode) {
@@ -251,26 +238,6 @@ public class AutonomousControlActivity extends Activity {
                                 updateTextViews(pose, navigationInfo);
 
                                 lastUpdateTime = System.currentTimeMillis();
-
-//                                runOnUiThread(new Runnable() {
-//                                    @Override
-//                                    public void run() {
-//                                        double xPos = poseData.translation[0];
-//                                        double yPos = poseData.translation[1];
-//
-//                                        String poseString = "X position: " + round(xPos) +
-//                                                "\nY position: " + round(yPos) +
-//                                                "\nRotation: " + (int) getPoseRotationDegrees(poseData.rotation);
-//
-//                                        poseDataTextView.setText(poseString);
-//
-//                                        if (navigationInfo != null) {
-//                                            directionCommandTextView.setText(navigationInfo.getCommand());
-//                                            goRotationTextView.setText(navigationInfo.getGoRotation());
-//                                            ourRotationTextView.setText(navigationInfo.getOurRotation());
-//                                        }
-//                                    }
-//                                });
                             }
                         }
                     }
@@ -298,8 +265,8 @@ public class AutonomousControlActivity extends Activity {
 
                 poseDataTextView.setText(poseString);
                 directionCommandTextView.setText("Command: " + navigationInfo.getCommand());
-//                goRotationTextView.setText(navigationInfo.getGoRotation());
-//                ourRotationTextView.setText(navigationInfo.getOurRotation());
+                goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
+                ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
             }
         });
     }
