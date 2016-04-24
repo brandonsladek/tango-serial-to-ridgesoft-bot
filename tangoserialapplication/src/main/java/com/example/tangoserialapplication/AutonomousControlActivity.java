@@ -33,6 +33,11 @@ public class AutonomousControlActivity extends Activity {
     private Tango mTango;
     private TangoConfig mConfig;
 
+    private TextToSpeechThread tts;
+    Thread ttsThread;
+
+    private boolean targetEngaged = false;
+
     private final Object mSharedLock = new Object();
     private NavigationLogic navigationLogic;
 
@@ -50,7 +55,7 @@ public class AutonomousControlActivity extends Activity {
     Long lastUpdateTime;
 
     // Red X in middle of classroom floor
-    private double[] targetLocation = new double[]{6.09, 3.78, 1.0};
+    private double[] targetLocation = new double[]{6.4, 3.82, 1.0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +78,11 @@ public class AutonomousControlActivity extends Activity {
         serialThread = new Thread(tangoSerialConnection);
         serialThread.start();
 
+        tts = TextToSpeechThread.getInstance();
+        tts.setContext(getApplicationContext());
+        ttsThread = new Thread(tts);
+        ttsThread.start();
+
         navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
@@ -91,6 +101,14 @@ public class AutonomousControlActivity extends Activity {
         bundle.putChar("COMMAND_VALUE", commandValue);
         msg.setData(bundle);
         tangoSerialConnection.handler.sendMessage(msg);
+    }
+
+    private void sendSpeakString(String toSpeak) {
+        Message msg = tts.handler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putString("SPEAK_TEXT", toSpeak);
+        msg.setData(bundle);
+        tts.handler.sendMessage(msg);
     }
 
     // All of the methods below this point are from the Google Project Tango area learning tutorials
@@ -230,10 +248,15 @@ public class AutonomousControlActivity extends Activity {
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
                             // Throttle pose updates by a tenth of a second
-                            if (System.currentTimeMillis() - lastUpdateTime > 100) {
+                            if (System.currentTimeMillis() - lastUpdateTime > 100 && !targetEngaged) {
 
                                 NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
                                 sendRobotCommand(navigationInfo.getCommand());
+
+                                if (navigationInfo.getCommand() == 's') {
+                                    sendSpeakString("Engaging target");
+                                    targetEngaged = true;
+                                }
 
                                 updateTextViews(pose, navigationInfo);
 
