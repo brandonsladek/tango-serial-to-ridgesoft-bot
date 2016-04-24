@@ -50,7 +50,7 @@ public class AutonomousControlActivity extends Activity {
     Long lastUpdateTime;
 
     // Red X in middle of classroom floor
-    private double[] targetLocation = new double[]{6.4, 3.8, 1.0};
+    private double[] targetLocation = new double[]{6.09, 3.78, 1.0};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -261,7 +261,7 @@ public class AutonomousControlActivity extends Activity {
 
                 String poseString = "X position: " + round(xPos) +
                         "\nY position: " + round(yPos) +
-                        "\nRotation: " + (int) getPoseRotationDegrees(pose.rotation);
+                        "\nRotation: " + (int) getYaw(pose.rotation);
 
                 poseDataTextView.setText(poseString);
                 directionCommandTextView.setText("Command: " + navigationInfo.getCommand());
@@ -269,6 +269,16 @@ public class AutonomousControlActivity extends Activity {
                 ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
             }
         });
+    }
+
+    private double getYaw(double[] rotation) {
+
+        double x = rotation[0];
+        double y = rotation[1];
+        double z = rotation[2];
+        double w = rotation[3];
+
+        return Math.toDegrees(Math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z)) + 180;
     }
 
     private double getPoseRotationDegrees(double[] rotation) {

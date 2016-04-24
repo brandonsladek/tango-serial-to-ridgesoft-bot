@@ -68,18 +68,18 @@ public class NavigationLogic {
         double ourY = translation[1];
         double ourZ = translation[2];
 
-        double radiusDiff = 2.0;
+        double radiusDiff = 1.0;
         double xDiff = radiusDiff * Math.cos (45.0);
         double yDiff = radiusDiff * Math.sin (45.0);
 
-        double[] north = new double[]{ourX, ourY + radiusDiff, ourZ};
-        double[] northEast = new double[]{ourX + xDiff, ourY + yDiff, ourZ};
-        double[] east = new double[]{ourX + radiusDiff, ourY, ourZ};
-        double[] southEast = new double[]{ourX + xDiff, ourY - yDiff, ourZ};
-        double[] south = new double[]{ourX, ourY - radiusDiff, ourZ};
-        double[] southWest = new double[]{ourX - xDiff, ourY - yDiff, ourZ};
-        double[] west = new double[]{ourX - radiusDiff, ourY, ourZ};
-        double[] northWest = new double[]{ourX - xDiff, ourY + yDiff, ourZ};
+        double[] north = new double[]{ourX, ourY - radiusDiff, ourZ};
+        double[] northWest = new double[]{ourX + xDiff, ourY - yDiff, ourZ};
+        double[] west = new double[]{ourX + radiusDiff, ourY, ourZ};
+        double[] southWest = new double[]{ourX + xDiff, ourY + yDiff, ourZ};
+        double[] south = new double[]{ourX, ourY + radiusDiff, ourZ};
+        double[] southEast = new double[]{ourX - xDiff, ourY + yDiff, ourZ};
+        double[] east = new double[]{ourX - radiusDiff, ourY, ourZ};
+        double[] northEast = new double[]{ourX - xDiff, ourY - yDiff, ourZ};
 
         double[] distances = new double[8];
 
@@ -93,13 +93,13 @@ public class NavigationLogic {
         double distanceNorthWest = getDistance(northWest, target);
 
         distances [0] = distanceNorth;
-        distances [1] = distanceNorthEast;
-        distances [2] = distanceEast;
-        distances [3] = distanceSouthEast;
+        distances [1] = distanceNorthWest;
+        distances [2] = distanceWest;
+        distances [3] = distanceSouthWest;
         distances [4] = distanceSouth;
-        distances [5] = distanceSouthWest;
-        distances [6] = distanceWest;
-        distances [7] = distanceNorthWest;
+        distances [5] = distanceSouthEast;
+        distances [6] = distanceEast;
+        distances [7] = distanceNorthEast;
 
         int indexWithMinimumDistance = 8;
         double minimumDistance = Double.MAX_VALUE;
@@ -111,7 +111,7 @@ public class NavigationLogic {
             }
         }
 
-        int ourRotation = (int) getPoseRotationDegrees(rotation);
+        int ourRotation = (int) getOurRotation(rotation);
         int goRotation = convertIndexToYRotationValue(indexWithMinimumDistance);
         double currentDistance = getDistance(translation, target);
 
@@ -133,6 +133,7 @@ public class NavigationLogic {
     }
 
     private int convertIndexToYRotationValue(int index) {
+        // Originally started with 0, 45, 90, ...
         switch (index) {
             case 0:
                 return 0;
@@ -169,21 +170,31 @@ public class NavigationLogic {
                     double diff = goRotation - ourRotation;
                     if (diff <= 180) {
                         // Tell the robot to turn right
-                        return 'r';
+                        return 'l';
                     } else {
                         // Tell the robot to turn left
-                        return 'l';
+                        return 'r';
                     }
                 } else {
                     double diff = ourRotation - goRotation;
                     if (diff <= 180) {
-                        return 'l';
-                    } else {
                         return 'r';
+                    } else {
+                        return 'l';
                     }
                 }
             }
         }
+    }
+
+    private double getOurRotation(double[] rotation) {
+
+        double x = rotation[0];
+        double y = rotation[1];
+        double z = rotation[2];
+        double w = rotation[3];
+
+        return Math.toDegrees(Math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z)) + 180;
     }
 
     private double getPoseRotationDegrees(double[] rotation) {
@@ -215,20 +226,4 @@ public class NavigationLogic {
         return Math.toDegrees(rollRadians) + 180;
     }
 
-//    @Override
-//    public void run() {
-//        Looper.prepare();
-//
-//        handler = new Handler() {
-//            @Override
-//            public void handleMessage(Message msg) {
-//                double[] translation = msg.getData().getDoubleArray("TRANSLATION");
-//                double[] rotation = msg.getData().getDoubleArray("ROTATION");
-//                double[] target = msg.getData().getDoubleArray("TARGET");
-//                char command = navigate(translation, rotation, target);
-//            }
-//        };
-//
-//        Looper.loop();
-//    }
 }
