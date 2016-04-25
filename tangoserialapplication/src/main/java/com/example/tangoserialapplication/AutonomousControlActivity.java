@@ -51,11 +51,15 @@ public class AutonomousControlActivity extends Activity {
     private TextView localizationStatusTextView;
     private TextView ourRotationTextView;
     private TextView goRotationTextView;
+    private Button saveLandmarkButton;
+    private Button goToLandmarkButton;
 
     Long lastUpdateTime;
 
     // Red X in middle of classroom floor
     private double[] targetLocation = new double[]{6.4, 3.82, 1.0};
+
+    private double[] landmarkLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +67,7 @@ public class AutonomousControlActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_autonomous_control);
 
-        // TextViews!
+        // Buttons and TextViews!
         poseDataTextView = (TextView) findViewById(R.id.ac_poseDataTextView);
         adfUUIDTextView = (TextView) findViewById(R.id.ac_adfUUIDTextView);
         directionCommandTextView = (TextView) findViewById(R.id.ac_directionCommandTextView);
@@ -71,6 +75,29 @@ public class AutonomousControlActivity extends Activity {
         goRotationTextView = (TextView) findViewById(R.id.ac_goRotationTextView);
         localizationStatusTextView = (TextView) findViewById(R.id.ac_localizationStatusTextView);
         localizationStatusTextView.setText("Not localized!");
+        saveLandmarkButton = (Button) findViewById(R.id.ac_saveLandmarkButton);
+        goToLandmarkButton = (Button) findViewById(R.id.ac_goToLandmarkButton);
+
+        saveLandmarkButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mIsRelocalized) {
+                    double[] translation = currentPose.translation;
+                    landmarkLocation[0] = translation[0];
+                    landmarkLocation[1] = translation[1];
+                    landmarkLocation[2] = translation[2];
+                }
+            }
+        });
+
+        goToLandmarkButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (landmarkLocation != null) {
+                    goToLocation(landmarkLocation);
+                }
+            }
+        });
 
         // Start thread for usb serial connection
         tangoSerialConnection = TangoSerialConnection.getInstance();
@@ -78,6 +105,7 @@ public class AutonomousControlActivity extends Activity {
         serialThread = new Thread(tangoSerialConnection);
         serialThread.start();
 
+        // Start thread for text to speech
         tts = TextToSpeechThread.getInstance();
         tts.setContext(getApplicationContext());
         ttsThread = new Thread(tts);
@@ -248,17 +276,19 @@ public class AutonomousControlActivity extends Activity {
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
                             // Throttle pose updates by a tenth of a second
-                            if (System.currentTimeMillis() - lastUpdateTime > 100 && !targetEngaged) {
+                            if (System.currentTimeMillis() - lastUpdateTime > 100) {
 
-                                NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
-                                sendRobotCommand(navigationInfo.getCommand());
+                                currentPose = pose;
 
-                                if (navigationInfo.getCommand() == CommandValues.MOVE_STOP) {
-                                    sendSpeakString("Engaging target");
-                                    targetEngaged = true;
-                                }
-
-                                updateTextViews(pose, navigationInfo);
+//                                NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
+//                                sendRobotCommand(navigationInfo.getCommand());
+//
+//                                if (navigationInfo.getCommand() == CommandValues.MOVE_STOP) {
+//                                    sendSpeakString("Engaging target");
+//                                    targetEngaged = true;
+//                                }
+//
+//                                updateTextViews(pose, navigationInfo);
 
                                 lastUpdateTime = System.currentTimeMillis();
                             }
@@ -275,6 +305,52 @@ public class AutonomousControlActivity extends Activity {
 
     }
 
+    private void goToLocation(final double[] target) {
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                Long lastTime = System.currentTimeMillis();
+                sendSpeakString("Starting");
+
+                NavigationInfo navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                char command = navigationInfo.getCommand();
+
+                char previousCommand = 'z';
+                boolean timeToStop = false;
+
+                while (!timeToStop) {
+
+                    if (System.currentTimeMillis() - lastTime > 100) {
+
+                        if (command == CommandValues.MOVE_STOP) {
+                            timeToStop = true;
+                        }
+
+                        lastTime = System.currentTimeMillis();
+                        final char comm = command;
+
+                        if (command != previousCommand) {
+                            sendRobotCommand(command);
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    directionCommandTextView.setText("Current command: " + comm);
+                                }
+                            });
+                        }
+                        previousCommand = command;
+                        NavigationInfo newNavInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                        command = newNavInfo.getCommand();
+                    }
+                }
+                sendSpeakString("Engaging target");
+            }
+        }).start();
+    }
+
     private void updateTextViews(final TangoPoseData pose, final NavigationInfo navigationInfo) {
         runOnUiThread(new Runnable() {
             @Override
@@ -284,7 +360,7 @@ public class AutonomousControlActivity extends Activity {
 
                 String poseString = "X position: " + round(xPos) +
                         "\nY position: " + round(yPos) +
-                        "\nRotation: " + (int) getYaw(pose.rotation);
+                        "\nRotation: " + (int) getOurRotation(pose.rotation);
 
                 poseDataTextView.setText(poseString);
                 directionCommandTextView.setText("Command: " + navigationInfo.getCommand());
@@ -294,7 +370,7 @@ public class AutonomousControlActivity extends Activity {
         });
     }
 
-    private double getYaw(double[] rotation) {
+    private double getOurRotation(double[] rotation) {
 
         double x = rotation[0];
         double y = rotation[1];

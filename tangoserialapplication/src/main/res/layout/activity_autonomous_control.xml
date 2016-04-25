@@ -35,6 +35,22 @@
                 android:id="@+id/ac_goRotationTextView"/>
         </LinearLayout>
 
+        <Button
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Go To Landmark"
+            android:id="@+id/ac_goToLandmarkButton"
+            android:layout_gravity="bottom"
+            android:layout_weight="1.38" />
+
+        <Button
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Save Landmark"
+            android:id="@+id/ac_saveLandmarkButton"
+            android:layout_gravity="bottom"
+            android:layout_weight="1.28" />
+
         <LinearLayout
             android:orientation="vertical"
             android:layout_width="0dp"

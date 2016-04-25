@@ -1,9 +1,12 @@
 package com.example.tangoserialapplication;
 
 import android.app.Activity;
+import android.content.Context;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +52,8 @@ public class NetworkControlActivity extends Activity {
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
     private TextView currentCommandTextView;
+    private UsbManager usbManager;
+    private String TAG = NetworkControlActivity.class.getSimpleName();
     Handler updateConversationHandler;
     Thread serverThread = null;
     Thread ttsThread;
@@ -80,6 +85,8 @@ public class NetworkControlActivity extends Activity {
         tts.setContext(getApplicationContext());
         ttsThread = new Thread(tts);
         ttsThread.start();
+
+        usbManager = (UsbManager) this.getSystemService(Context.USB_SERVICE);
 
     }
 
@@ -194,7 +201,7 @@ public class NetworkControlActivity extends Activity {
 
                             String poseString = "X position: " +  round(xPos) +
                                     "\nY position: " + round(yPos) +
-                                    "\nRotation: " + (int) getPoseRotationDegrees(currentPose.rotation);
+                                    "\nRotation: " + (int) getOurRotation(currentPose.rotation);
 
                             poseDataTextView.setText(poseString);
                         }
@@ -209,35 +216,15 @@ public class NetworkControlActivity extends Activity {
         });
     }
 
-    private double getPoseRotationDegrees(double[] rotation) {
+    private double getOurRotation(double[] rotation) {
 
         double x = rotation[0];
         double y = rotation[1];
         double z = rotation[2];
         double w = rotation[3];
 
-        double t = y*x+z*w;
-        int pole;
-        double rollRadians;
-
-        if (t > 0.499f) {
-            pole = 1;
-        } else if (t < -0.499f) {
-            pole = -1;
-        } else {
-            pole = 0;
-        }
-
-        if (pole == 0) {
-            rollRadians = Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
-        } else {
-            rollRadians = pole * 2f * Math.atan2(y, w);
-        }
-
-        // 0 - 360
-        return Math.toDegrees(rollRadians) + 180;
+        return Math.toDegrees(Math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z)) + 180;
     }
-
 
     private double round(double number) {
         double newNumber = number * 100;
@@ -283,22 +270,6 @@ public class NetworkControlActivity extends Activity {
             mTango.disconnect();
         } catch (TangoErrorException e) {
             Toast.makeText(getApplicationContext(), "TangoErrorException!", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        try {
-            serverSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -349,13 +320,29 @@ public class NetworkControlActivity extends Activity {
                     String read = input.readLine();
 
                     if (read.equals("c")) {
-                        tangoSerialConnection = new TangoSerialConnection(context);
+                        tangoSerialConnection = TangoSerialConnection.getInstance();
+                        tangoSerialConnection.setUsbManager(usbManager);
                         Thread thread = new Thread(tangoSerialConnection);
                         thread.start();
                         updateConversationHandler.post(new updateUIThread("Connected!"));
 
                     } else if (read.equals("recordADF")) {
-                        //need to do something to start recording the ADF here.....
+                        onPause();
+                        // Create new tango config with learning mode on this time
+                        mConfig = setTangoConfig(mTango, true, false);
+                        onResume();
+
+                    }  else if (read.equals("adfSave")) {
+                        if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
+                            String data = read;
+                            String adfName = data.split(" ")[1];
+                            saveAdf(adfName);
+                        }
+
+                    }  else if (read.equals("adfLoad")) {
+                        onPause();
+                        mConfig = setTangoConfig(mTango, false, true);
+                        onResume();
 
                     } else if (read.contains("save")) {
                         String landmarkName = read;
@@ -394,7 +381,30 @@ public class NetworkControlActivity extends Activity {
 
     }
 
-    public String getLandmark(int num) {
+    private void saveAdf(final String name) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String adfUuid = null;
+                try {
+                    // Save the ADF.
+                    adfUuid = mTango.saveAreaDescription();
+
+                    // Read the ADF Metadata, set the desired name, and save it back.
+                    TangoAreaDescriptionMetaData metadata = mTango.loadAreaDescriptionMetaData(adfUuid);
+                    metadata.set(TangoAreaDescriptionMetaData.KEY_NAME, name.getBytes());
+                    mTango.saveAreaDescriptionMetadata(adfUuid, metadata);
+
+                } catch (TangoErrorException e) {
+                    Log.w(TAG, "TangoErrorException saving adf!");
+                } catch (TangoInvalidException e) {
+                    Log.w(TAG, "TangoInvalidException saving adf!");
+                }
+            }
+        }).start();
+    }
+
+    private String getLandmark(int num) {
         if (num == 1) {
             return landmark1Name;
         } else if(num == 2) {
@@ -499,6 +509,26 @@ public class NetworkControlActivity extends Activity {
             default:
                 sendSpeakString("Unknown direction command");
                 break;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // Stop threads
+        serverThread.interrupt();
+        ttsThread.interrupt();
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

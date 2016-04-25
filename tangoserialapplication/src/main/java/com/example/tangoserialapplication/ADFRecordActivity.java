@@ -65,6 +65,9 @@ public class ADFRecordActivity extends Activity implements View.OnClickListener,
         switch(v.getId()) {
             case R.id.adf_startButton:
                 // start recording adf
+                // right now it automatically starts recording an adf when the activity starts...
+                onPause();
+                onResume();
                 break;
             case R.id.adf_saveAdfButton:
                 showSetADFNameDialog();
