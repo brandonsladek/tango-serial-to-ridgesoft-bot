@@ -36,6 +36,7 @@
         <activity android:name=".NetworkControlActivity" />
         <activity android:name=".ManualControlActivity" />
         <activity android:name=".AutonomousControlActivity" />
+        <activity android:name=".ADFRecordActivity" />
         
     </application>
 

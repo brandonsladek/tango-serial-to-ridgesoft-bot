@@ -253,7 +253,7 @@ public class AutonomousControlActivity extends Activity {
                                 NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
                                 sendRobotCommand(navigationInfo.getCommand());
 
-                                if (navigationInfo.getCommand() == 's') {
+                                if (navigationInfo.getCommand() == CommandValues.MOVE_STOP) {
                                     sendSpeakString("Engaging target");
                                     targetEngaged = true;
                                 }
@@ -302,35 +302,6 @@ public class AutonomousControlActivity extends Activity {
         double w = rotation[3];
 
         return Math.toDegrees(Math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z)) + 180;
-    }
-
-    private double getPoseRotationDegrees(double[] rotation) {
-
-        double x = rotation[0];
-        double y = rotation[1];
-        double z = rotation[2];
-        double w = rotation[3];
-
-        double t = y*x+z*w;
-        int pole;
-        double rollRadians;
-
-        if (t > 0.499f) {
-            pole = 1;
-        } else if (t < -0.499f) {
-            pole = -1;
-        } else {
-            pole = 0;
-        }
-
-        if (pole == 0) {
-            rollRadians = Math.atan2(2f*(w*z + y*x), 1f - 2f * (x*x + z*z));
-        } else {
-            rollRadians = pole * 2f * Math.atan2(y, w);
-        }
-
-        // 0 - 360
-        return Math.toDegrees(rollRadians) + 180;
     }
 
     private double round(double number) {

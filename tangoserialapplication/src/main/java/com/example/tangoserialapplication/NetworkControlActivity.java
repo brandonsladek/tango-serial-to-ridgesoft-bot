@@ -380,6 +380,7 @@ public class NetworkControlActivity extends Activity {
                     } else {
                         if (tangoSerialConnection != null) {
                             sendRobotCommand(read.charAt(0));
+                            speakDirection(read.charAt(0));
                         }
 
                     }
@@ -421,18 +422,20 @@ public class NetworkControlActivity extends Activity {
             @Override
             public void run() {
 
+                Long lastTime = System.currentTimeMillis();
                 sendSpeakString("Starting");
 
-                Long lastTime = System.currentTimeMillis();
+                NavigationInfo navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                char command = navigationInfo.getCommand();
+
                 char previousCommand = 'z';
-                char command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
                 boolean timeToStop = false;
 
                 while (!timeToStop) {
 
                     if (System.currentTimeMillis() - lastTime > 100) {
 
-                        if (command == 's') {
+                        if (command == CommandValues.MOVE_STOP) {
                             timeToStop = true;
                         }
 
@@ -449,17 +452,14 @@ public class NetworkControlActivity extends Activity {
                                 }
                             });
                         }
-
                         previousCommand = command;
-                        command = navigationLogic.navigate(currentPose.translation, currentPose.rotation, target);
+                        NavigationInfo newNavInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                        command = newNavInfo.getCommand();
                     }
                 }
-
                 sendSpeakString("Engaging target");
-
             }
         }).start();
-
     }
 
     private void sendRobotCommand(char commandValue) {
@@ -476,6 +476,30 @@ public class NetworkControlActivity extends Activity {
         bundle.putString("SPEAK_TEXT", toSpeak);
         msg.setData(bundle);
         tts.handler.sendMessage(msg);
+    }
+
+    private void speakDirection(char command) {
+
+        switch (command) {
+            case CommandValues.MOVE_FORWARD:
+                sendSpeakString("Moving forward");
+                break;
+            case CommandValues.MOVE_REVERSE:
+                sendSpeakString("Moving in reverse");
+                break;
+            case CommandValues.MOVE_LEFT:
+                sendSpeakString("Moving left");
+                break;
+            case CommandValues.MOVE_RIGHT:
+                sendSpeakString("Moving right");
+                break;
+            case CommandValues.MOVE_STOP:
+                sendSpeakString("Stopping");
+                break;
+            default:
+                sendSpeakString("Unknown direction command");
+                break;
+        }
     }
 
 }
