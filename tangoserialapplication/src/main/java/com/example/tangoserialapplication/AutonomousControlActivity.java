@@ -1,10 +1,13 @@
 package com.example.tangoserialapplication;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Message;
+import android.speech.RecognizerIntent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -22,6 +25,7 @@ import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 /** Brandon Sladek and John Waters */
 
@@ -51,15 +55,22 @@ public class AutonomousControlActivity extends Activity {
     private TextView localizationStatusTextView;
     private TextView ourRotationTextView;
     private TextView goRotationTextView;
+    private TextView landmarkTextView;
     private Button saveLandmarkButton;
     private Button goToLandmarkButton;
+    private Button speakCommandButton;
+    private TextView spokenCommandTextView;
+
+    private NavigationInfo navigationInfo;
 
     Long lastUpdateTime;
+
+    private final int REQ_CODE_SPEECH_INPUT = 100;
 
     // Red X in middle of classroom floor
     private double[] targetLocation = new double[]{6.4, 3.82, 1.0};
 
-    private double[] landmarkLocation;
+    private double[] landmarkLocation = new double[3];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +86,11 @@ public class AutonomousControlActivity extends Activity {
         goRotationTextView = (TextView) findViewById(R.id.ac_goRotationTextView);
         localizationStatusTextView = (TextView) findViewById(R.id.ac_localizationStatusTextView);
         localizationStatusTextView.setText("Not localized!");
+        landmarkTextView = (TextView) findViewById(R.id.ac_landmarkTextView);
         saveLandmarkButton = (Button) findViewById(R.id.ac_saveLandmarkButton);
         goToLandmarkButton = (Button) findViewById(R.id.ac_goToLandmarkButton);
+        speakCommandButton = (Button) findViewById(R.id.ac_speakCommandButton);
+        spokenCommandTextView = (TextView) findViewById(R.id.ac_spokenCommandTextView);
 
         saveLandmarkButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,6 +100,16 @@ public class AutonomousControlActivity extends Activity {
                     landmarkLocation[0] = translation[0];
                     landmarkLocation[1] = translation[1];
                     landmarkLocation[2] = translation[2];
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            landmarkTextView.setText("X: " + landmarkLocation[0] +
+                                    "\nY: " + landmarkLocation[1] + "\nZ: " + landmarkLocation[2]);
+                        }
+                    });
+
+                    sendSpeakString("Target recorded");
                 }
             }
         });
@@ -93,8 +117,21 @@ public class AutonomousControlActivity extends Activity {
         goToLandmarkButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (landmarkLocation != null) {
-                    goToLocation(landmarkLocation);
+                goToLocation(landmarkLocation);
+            }
+        });
+
+        speakCommandButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+
+                try {
+                    startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+                } catch (ActivityNotFoundException a) {
+                    System.out.println("error");
                 }
             }
         });
@@ -120,7 +157,45 @@ public class AutonomousControlActivity extends Activity {
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
 
         lastUpdateTime = System.currentTimeMillis();
+    }
 
+    /**
+     * Receiving speech input
+     * */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case REQ_CODE_SPEECH_INPUT: {
+                if (resultCode == RESULT_OK && null != data) {
+                    final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            spokenCommandTextView.setText(result.get(0));
+                        }
+                    });
+
+                    checkForCommands(result.get(0));
+
+                }
+                break;
+            }
+
+        }
+    }
+
+    private void checkForCommands(String speech) {
+        switch (speech) {
+            case "go to landmark":
+                goToLocation(landmarkLocation);
+                break;
+            default:
+                sendSpeakString("What the hell are you talking about?");
+                break;
+        }
     }
 
     private void sendRobotCommand(char commandValue) {
@@ -288,7 +363,7 @@ public class AutonomousControlActivity extends Activity {
 //                                    targetEngaged = true;
 //                                }
 //
-//                                updateTextViews(pose, navigationInfo);
+                                updateTextViews(pose, navigationInfo);
 
                                 lastUpdateTime = System.currentTimeMillis();
                             }
@@ -314,7 +389,7 @@ public class AutonomousControlActivity extends Activity {
                 Long lastTime = System.currentTimeMillis();
                 sendSpeakString("Starting");
 
-                NavigationInfo navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
                 char command = navigationInfo.getCommand();
 
                 char previousCommand = 'z';
@@ -342,8 +417,8 @@ public class AutonomousControlActivity extends Activity {
                             });
                         }
                         previousCommand = command;
-                        NavigationInfo newNavInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
-                        command = newNavInfo.getCommand();
+                        navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
+                        command = navigationInfo.getCommand();
                     }
                 }
                 sendSpeakString("Engaging target");
@@ -363,9 +438,12 @@ public class AutonomousControlActivity extends Activity {
                         "\nRotation: " + (int) getOurRotation(pose.rotation);
 
                 poseDataTextView.setText(poseString);
-                directionCommandTextView.setText("Command: " + navigationInfo.getCommand());
-                goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
-                ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
+
+                if (navigationInfo != null) {
+                    directionCommandTextView.setText("Command: " + navigationInfo.getCommand());
+                    goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
+                    ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
+                }
             }
         });
     }

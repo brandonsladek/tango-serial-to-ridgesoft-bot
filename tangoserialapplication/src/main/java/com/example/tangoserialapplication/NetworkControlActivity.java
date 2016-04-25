@@ -30,10 +30,11 @@ import java.util.ArrayList;
 
 /** Brandon Sladek and John Waters */
 
-public class NetworkControlActivity extends Activity {
+public class NetworkControlActivity extends Activity implements SaveAdfTask.SaveAdfListener {
 
     private ServerSocket serverSocket;
     private TextView mostRecentMessageTextView;
+    private TextView localizationStatusTextView;
     private TangoSerialConnection tangoSerialConnection;
     private TextToSpeechThread tts;
     private NavigationLogic navigationLogic;
@@ -54,9 +55,11 @@ public class NetworkControlActivity extends Activity {
     private TextView currentCommandTextView;
     private UsbManager usbManager;
     private String TAG = NetworkControlActivity.class.getSimpleName();
+    private SaveAdfTask saveAdfTask;
     Handler updateConversationHandler;
     Thread serverThread = null;
     Thread ttsThread;
+    Long lastUpdateTime;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -67,6 +70,8 @@ public class NetworkControlActivity extends Activity {
         mostRecentMessageTextView = (TextView) findViewById(R.id.nc_mostRecentMessageTextView);
         poseDataTextView = (TextView) findViewById(R.id.nc_poseDataTextView);
         currentCommandTextView = (TextView) findViewById(R.id.nc_currentCommandTextView);
+        localizationStatusTextView = (TextView) findViewById(R.id.nc_localizationStatusTextView);
+        localizationStatusTextView.setText("Not localized");
 
         updateConversationHandler = new Handler();
 
@@ -87,6 +92,8 @@ public class NetworkControlActivity extends Activity {
         ttsThread.start();
 
         usbManager = (UsbManager) this.getSystemService(Context.USB_SERVICE);
+
+        lastUpdateTime = System.currentTimeMillis();
 
     }
 
@@ -188,30 +195,63 @@ public class NetworkControlActivity extends Activity {
                 // UI loop doesn't interfere while Pose call back is updating
                 // the data.
                 synchronized (mSharedLock) {
-                    currentPose = pose;
-                }
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (currentPose != null) {
+                    // Process new localization
+                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
+                        if (pose.statusCode == TangoPoseData.POSE_VALID) {
+                            mIsRelocalized = true;
 
-                            double xPos = currentPose.translation[0];
-                            double yPos = currentPose.translation[1];
-
-                            String poseString = "X position: " +  round(xPos) +
-                                    "\nY position: " + round(yPos) +
-                                    "\nRotation: " + (int) getOurRotation(currentPose.rotation);
-
-                            poseDataTextView.setText(poseString);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    localizationStatusTextView.setText("Localized!");
+                                }
+                            });
                         }
                     }
-                });
+                    // Process new ADF to device pose
+                    else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                            && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
+
+                        if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
+
+                            // Throttle pose updates by a tenth of a second
+                            if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                currentPose = pose;
+
+                                updateTextViews(pose, null);
+
+                                lastUpdateTime = System.currentTimeMillis();
+                            }
+                        }
+                    }
+                }
             }
 
             @Override
             public void onFrameAvailable(int cameraId) {
                 // We will use this method for dealing with the camera
+            }
+        });
+    }
+
+    private void updateTextViews(final TangoPoseData pose, final NavigationInfo navigationInfo) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                double xPos = pose.translation[0];
+                double yPos = pose.translation[1];
+
+                String poseString = "X position: " + round(xPos) +
+                        "\nY position: " + round(yPos) +
+                        "\nRotation: " + (int) getOurRotation(pose.rotation);
+
+                poseDataTextView.setText(poseString);
+                //currentCommandTextView.setText("Command: " + navigationInfo.getCommand());
+                //goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
+                //ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
             }
         });
     }
@@ -271,6 +311,30 @@ public class NetworkControlActivity extends Activity {
         } catch (TangoErrorException e) {
             Toast.makeText(getApplicationContext(), "TangoErrorException!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Handles failed save from mSaveAdfTask.
+     */
+    public void onSaveAdfFailed(String adfName) {
+        String toastMessage = String.format(
+                getResources().getString(R.string.save_adf_failed_toast_format),
+                adfName);
+        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show();
+        saveAdfTask = null;
+    }
+
+    /**
+     * Handles successful save from mSaveAdfTask.
+     */
+    @Override
+    public void onSaveAdfSuccess(String adfName, String adfUuid) {
+        String toastMessage = String.format(
+                getResources().getString(R.string.save_adf_success_toast_format),
+                adfName, adfUuid);
+        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show();
+        saveAdfTask = null;
+        finish();
     }
 
     class ServerThread implements Runnable {
@@ -336,7 +400,8 @@ public class NetworkControlActivity extends Activity {
                         if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
                             String data = read;
                             String adfName = data.split(" ")[1];
-                            saveAdf(adfName);
+                            saveAdfTask = new SaveAdfTask(context, context, mTango, adfName);
+                            saveAdfTask.execute();
                         }
 
                     }  else if (read.equals("adfLoad")) {
@@ -369,7 +434,6 @@ public class NetworkControlActivity extends Activity {
                             sendRobotCommand(read.charAt(0));
                             speakDirection(read.charAt(0));
                         }
-
                     }
                     updateConversationHandler.post(new updateUIThread(read));
 
