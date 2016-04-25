@@ -4,43 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    android:orientation="vertical"
     tools:context="com.example.tangoserialapplication.MainActivity"
     tools:showIn="@layout/activity_main">
-
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Manual"
-        android:id="@+id/manualControlButton"
-        android:layout_below="@+id/selectControlText"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="68dp" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Network"
-        android:id="@+id/networkControlButton"
-        android:singleLine="true"
-        android:layout_marginRight="40dp"
-        android:layout_marginTop="39dp"
-        android:layout_below="@+id/manualControlButton"
-        android:layout_alignParentStart="true" />
-
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Autonomous"
-        android:id="@+id/autonomousControlButton"
-        android:layout_below="@+id/networkControlButton"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="34dp" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -49,15 +15,45 @@
         android:text="Select Control..."
         android:id="@+id/selectControlText"
         android:layout_marginTop="68dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true" />
+        android:paddingBottom="10dp"/>
 
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Record ADF"
-        android:id="@+id/recordAdfButton"
-        android:layout_above="@+id/networkControlButton"
-        android:layout_toEndOf="@+id/selectControlText" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Manual"
+            android:id="@+id/manualControlButton"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Network"
+            android:id="@+id/networkControlButton"
+            android:singleLine="true" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Autonomous"
+            android:id="@+id/autonomousControlButton" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Record ADF"
+            android:id="@+id/recordAdfButton" />
+
+    </LinearLayout>
 
 </LinearLayout>

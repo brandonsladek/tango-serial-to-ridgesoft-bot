@@ -72,24 +72,54 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Save Landmark"
-            android:id="@+id/ac_saveLandmarkButton"
+            android:text="Save Landmark 1"
+            android:id="@+id/ac_saveLandmarkOneButton"
             android:layout_marginRight="20dp">
         </Button>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Landmark"
-            android:id="@+id/ac_landmarkTextView"
+            android:text="Landmark 1"
+            android:id="@+id/ac_landmarkOneTextView"
             android:layout_marginRight="20dp">
         </TextView>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Go To Landmark"
-            android:id="@+id/ac_goToLandmarkButton">
+            android:text="Go To Landmark 1"
+            android:id="@+id/ac_goToLandmarkOneButton">
+        </Button>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="100dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save Landmark 2"
+            android:id="@+id/ac_saveLandmarkTwoButton"
+            android:layout_marginRight="20dp">
+        </Button>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Landmark 2"
+            android:id="@+id/ac_landmarkTwoTextView"
+            android:layout_marginRight="20dp">
+        </TextView>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Go To Landmark 2"
+            android:id="@+id/ac_goToLandmarkTwoButton">
         </Button>
 
     </LinearLayout>

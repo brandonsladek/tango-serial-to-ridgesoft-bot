@@ -55,11 +55,17 @@ public class AutonomousControlActivity extends Activity {
     private TextView localizationStatusTextView;
     private TextView ourRotationTextView;
     private TextView goRotationTextView;
-    private TextView landmarkTextView;
-    private Button saveLandmarkButton;
-    private Button goToLandmarkButton;
+    private TextView landmarkOneTextView;
+    private Button saveLandmarkOneButton;
+    private Button goToLandmarkOneButton;
+    private TextView landmarkTwoTextView;
+    private Button saveLandmarkTwoButton;
+    private Button goToLandmarkTwoButton;
     private Button speakCommandButton;
     private TextView spokenCommandTextView;
+
+    private boolean goToLandmarkOne = false;
+    private boolean goToLandmarkTwo = false;
 
     private NavigationInfo navigationInfo;
 
@@ -70,7 +76,8 @@ public class AutonomousControlActivity extends Activity {
     // Red X in middle of classroom floor
     private double[] targetLocation = new double[]{6.4, 3.82, 1.0};
 
-    private double[] landmarkLocation = new double[3];
+    private double[] landmarkOneLocation = new double[3];
+    private double[] landmarkTwoLocation = new double[3];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,38 +93,74 @@ public class AutonomousControlActivity extends Activity {
         goRotationTextView = (TextView) findViewById(R.id.ac_goRotationTextView);
         localizationStatusTextView = (TextView) findViewById(R.id.ac_localizationStatusTextView);
         localizationStatusTextView.setText("Not localized!");
-        landmarkTextView = (TextView) findViewById(R.id.ac_landmarkTextView);
-        saveLandmarkButton = (Button) findViewById(R.id.ac_saveLandmarkButton);
-        goToLandmarkButton = (Button) findViewById(R.id.ac_goToLandmarkButton);
+        landmarkOneTextView = (TextView) findViewById(R.id.ac_landmarkOneTextView);
+        saveLandmarkOneButton = (Button) findViewById(R.id.ac_saveLandmarkOneButton);
+        goToLandmarkOneButton = (Button) findViewById(R.id.ac_goToLandmarkOneButton);
         speakCommandButton = (Button) findViewById(R.id.ac_speakCommandButton);
         spokenCommandTextView = (TextView) findViewById(R.id.ac_spokenCommandTextView);
+        landmarkTwoTextView = (TextView) findViewById(R.id.ac_landmarkTwoTextView);
+        saveLandmarkTwoButton = (Button) findViewById(R.id.ac_saveLandmarkTwoButton);
+        goToLandmarkTwoButton = (Button) findViewById(R.id.ac_goToLandmarkTwoButton);
 
-        saveLandmarkButton.setOnClickListener(new View.OnClickListener() {
+        saveLandmarkOneButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mIsRelocalized) {
                     double[] translation = currentPose.translation;
-                    landmarkLocation[0] = translation[0];
-                    landmarkLocation[1] = translation[1];
-                    landmarkLocation[2] = translation[2];
+                    landmarkOneLocation[0] = translation[0];
+                    landmarkOneLocation[1] = translation[1];
+                    landmarkOneLocation[2] = translation[2];
 
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            landmarkTextView.setText("X: " + landmarkLocation[0] +
-                                    "\nY: " + landmarkLocation[1] + "\nZ: " + landmarkLocation[2]);
+                            landmarkOneTextView.setText("X: " + landmarkOneLocation[0] +
+                                    "\nY: " + landmarkOneLocation[1] + "\nZ: " + landmarkOneLocation[2]);
                         }
                     });
 
-                    sendSpeakString("Target recorded");
+                    sendSpeakString("Target one recorded");
                 }
             }
         });
 
-        goToLandmarkButton.setOnClickListener(new View.OnClickListener() {
+        saveLandmarkTwoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                goToLocation(landmarkLocation);
+                if (mIsRelocalized) {
+                    double[] translation = currentPose.translation;
+                    landmarkTwoLocation[0] = translation[0];
+                    landmarkTwoLocation[1] = translation[1];
+                    landmarkTwoLocation[2] = translation[2];
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            landmarkTwoTextView.setText("X: " + landmarkTwoLocation[0] +
+                                    "\nY: " + landmarkTwoLocation[1] + "\nZ: " + landmarkTwoLocation[2]);
+                        }
+                    });
+
+                    sendSpeakString("Target two recorded");
+                }
+            }
+        });
+
+        goToLandmarkOneButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //goToLocation(landmarkLocation);
+                goToLandmarkOne = true;
+                goToLandmarkTwo = false;
+            }
+        });
+
+        goToLandmarkTwoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //goToLocation(landmarkLocation);
+                goToLandmarkTwo = true;
+                goToLandmarkOne = false;
             }
         });
 
@@ -189,8 +232,8 @@ public class AutonomousControlActivity extends Activity {
 
     private void checkForCommands(String speech) {
         switch (speech) {
-            case "go to landmark":
-                goToLocation(landmarkLocation);
+            case "go to landmark one":
+                goToLocation(landmarkOneLocation);
                 break;
             default:
                 sendSpeakString("What the hell are you talking about?");
@@ -350,10 +393,20 @@ public class AutonomousControlActivity extends Activity {
 
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            // Throttle pose updates by a tenth of a second
-                            if (System.currentTimeMillis() - lastUpdateTime > 100) {
+                            currentPose = pose;
 
-                                currentPose = pose;
+                            if (goToLandmarkOne) {
+
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkOneLocation);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    if (navigationInfo.getCommand() == 's') {
+                                        goToLandmarkOne = false;
+                                        sendSpeakString("Engaging target one");
+                                    }
 
 //                                NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
 //                                sendRobotCommand(navigationInfo.getCommand());
@@ -363,9 +416,27 @@ public class AutonomousControlActivity extends Activity {
 //                                    targetEngaged = true;
 //                                }
 //
-                                updateTextViews(pose, navigationInfo);
+                                    updateTextViews(pose, navigationInfo);
 
-                                lastUpdateTime = System.currentTimeMillis();
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+
+                            } else if (goToLandmarkTwo) {
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkTwoLocation);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    if (navigationInfo.getCommand() == 's') {
+                                        goToLandmarkTwo = false;
+                                        sendSpeakString("Engaging target two");
+                                    }
+
+                                    updateTextViews(pose, navigationInfo);
+
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
                             }
                         }
                     }

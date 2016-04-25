@@ -61,6 +61,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     Thread ttsThread;
     Long lastUpdateTime;
 
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
