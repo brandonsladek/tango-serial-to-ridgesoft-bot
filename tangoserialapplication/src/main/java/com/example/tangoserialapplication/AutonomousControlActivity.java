@@ -29,7 +29,7 @@ import java.util.Locale;
 
 /** Brandon Sladek and John Waters */
 
-public class AutonomousControlActivity extends Activity {
+public class AutonomousControlActivity extends Activity implements View.OnClickListener {
 
     private TangoSerialConnection tangoSerialConnection;
     private Thread serialThread;
@@ -39,8 +39,6 @@ public class AutonomousControlActivity extends Activity {
 
     private TextToSpeechThread tts;
     Thread ttsThread;
-
-    private boolean targetEngaged = false;
 
     private final Object mSharedLock = new Object();
     private NavigationLogic navigationLogic;
@@ -63,9 +61,22 @@ public class AutonomousControlActivity extends Activity {
     private Button goToLandmarkTwoButton;
     private Button speakCommandButton;
     private TextView spokenCommandTextView;
+    private Button recordSafePathButton;
+    private Button stopSafePathButton;
+    private Button followSafePathButton;
+    private Button viewSafePathButton;
+
+    private SafePath safePath;
 
     private boolean goToLandmarkOne = false;
     private boolean goToLandmarkTwo = false;
+    private boolean goingToStartOfSafePath = false;
+    private boolean followSafePath = false;
+    private boolean driftCorrectionMode = false;
+
+    private boolean recordingSafePath = false;
+    private boolean safePathRecorded = false;
+    ArrayList<SafePoint> safePoints = new ArrayList<>();
 
     private NavigationInfo navigationInfo;
 
@@ -75,7 +86,6 @@ public class AutonomousControlActivity extends Activity {
 
     // Red X in middle of classroom floor
     private double[] targetLocation = new double[]{6.4, 3.82, 1.0};
-
     private double[] landmarkOneLocation = new double[3];
     private double[] landmarkTwoLocation = new double[3];
 
@@ -101,83 +111,20 @@ public class AutonomousControlActivity extends Activity {
         landmarkTwoTextView = (TextView) findViewById(R.id.ac_landmarkTwoTextView);
         saveLandmarkTwoButton = (Button) findViewById(R.id.ac_saveLandmarkTwoButton);
         goToLandmarkTwoButton = (Button) findViewById(R.id.ac_goToLandmarkTwoButton);
+        recordSafePathButton = (Button) findViewById(R.id.ac_recordSafePathButton);
+        stopSafePathButton = (Button) findViewById(R.id.ac_stopSafePathButton);
+        followSafePathButton = (Button) findViewById(R.id.ac_followSafePathButton);
+        viewSafePathButton = (Button) findViewById(R.id.ac_viewSafePathButton);
 
-        saveLandmarkOneButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mIsRelocalized) {
-                    double[] translation = currentPose.translation;
-                    landmarkOneLocation[0] = translation[0];
-                    landmarkOneLocation[1] = translation[1];
-                    landmarkOneLocation[2] = translation[2];
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            landmarkOneTextView.setText("X: " + landmarkOneLocation[0] +
-                                    "\nY: " + landmarkOneLocation[1] + "\nZ: " + landmarkOneLocation[2]);
-                        }
-                    });
-
-                    sendSpeakString("Target one recorded");
-                }
-            }
-        });
-
-        saveLandmarkTwoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mIsRelocalized) {
-                    double[] translation = currentPose.translation;
-                    landmarkTwoLocation[0] = translation[0];
-                    landmarkTwoLocation[1] = translation[1];
-                    landmarkTwoLocation[2] = translation[2];
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            landmarkTwoTextView.setText("X: " + landmarkTwoLocation[0] +
-                                    "\nY: " + landmarkTwoLocation[1] + "\nZ: " + landmarkTwoLocation[2]);
-                        }
-                    });
-
-                    sendSpeakString("Target two recorded");
-                }
-            }
-        });
-
-        goToLandmarkOneButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //goToLocation(landmarkLocation);
-                goToLandmarkOne = true;
-                goToLandmarkTwo = false;
-            }
-        });
-
-        goToLandmarkTwoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //goToLocation(landmarkLocation);
-                goToLandmarkTwo = true;
-                goToLandmarkOne = false;
-            }
-        });
-
-        speakCommandButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-
-                try {
-                    startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
-                } catch (ActivityNotFoundException a) {
-                    System.out.println("error");
-                }
-            }
-        });
+        saveLandmarkOneButton.setOnClickListener(this);
+        saveLandmarkTwoButton.setOnClickListener(this);
+        goToLandmarkOneButton.setOnClickListener(this);
+        goToLandmarkTwoButton.setOnClickListener(this);
+        speakCommandButton.setOnClickListener(this);
+        recordSafePathButton.setOnClickListener(this);
+        stopSafePathButton.setOnClickListener(this);
+        followSafePathButton.setOnClickListener(this);
+        viewSafePathButton.setOnClickListener(this);
 
         // Start thread for usb serial connection
         tangoSerialConnection = TangoSerialConnection.getInstance();
@@ -220,9 +167,7 @@ public class AutonomousControlActivity extends Activity {
                             spokenCommandTextView.setText(result.get(0));
                         }
                     });
-
                     checkForCommands(result.get(0));
-
                 }
                 break;
             }
@@ -233,7 +178,12 @@ public class AutonomousControlActivity extends Activity {
     private void checkForCommands(String speech) {
         switch (speech) {
             case "go to landmark one":
-                goToLocation(landmarkOneLocation);
+                goToLandmarkOne = true;
+                goToLandmarkTwo = false;
+                break;
+            case "go to landmark two":
+                goToLandmarkTwo = true;
+                goToLandmarkOne = false;
                 break;
             default:
                 sendSpeakString("What the hell are you talking about?");
@@ -330,10 +280,6 @@ public class AutonomousControlActivity extends Activity {
         currentPose = new TangoPoseData();
     }
 
-    public TangoPoseData getCurrentPose() {
-        return currentPose;
-    }
-
     /**
      * Set up the callback listeners for the Tango service, then begin using the Motion
      * Tracking API. This is called in response to the user clicking the 'Start' Button.
@@ -395,10 +341,43 @@ public class AutonomousControlActivity extends Activity {
 
                             currentPose = pose;
 
-                            if (goToLandmarkOne) {
+                            if (driftCorrectionMode) {
+                                double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+
+                                if (distanceFromSafePath < 0.1) {
+                                    driftCorrectionMode = false;
+                                    return;
+                                }
 
                                 // Throttle pose updates by a tenth of a second
                                 if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, closestSafePathPoint);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+                            }
+
+                            else if (goToLandmarkOne) {
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    // Add current location to list of safe points
+                                    if (recordingSafePath) {
+                                        safePoints.add(new SafePoint(pose.translation));
+                                    }
+
+                                    if (safePathRecorded) {
+                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+
+                                        if (distanceFromSafePath > 0.1) {
+                                            driftCorrectionMode = true;
+                                            return;
+                                        }
+                                    }
 
                                     navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkOneLocation);
                                     sendRobotCommand(navigationInfo.getCommand());
@@ -408,22 +387,20 @@ public class AutonomousControlActivity extends Activity {
                                         sendSpeakString("Engaging target one");
                                     }
 
-//                                NavigationInfo navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, targetLocation);
-//                                sendRobotCommand(navigationInfo.getCommand());
-//
-//                                if (navigationInfo.getCommand() == CommandValues.MOVE_STOP) {
-//                                    sendSpeakString("Engaging target");
-//                                    targetEngaged = true;
-//                                }
-//
                                     updateTextViews(pose, navigationInfo);
-
                                     lastUpdateTime = System.currentTimeMillis();
                                 }
 
-                            } else if (goToLandmarkTwo) {
+                            }
+
+                            else if (goToLandmarkTwo) {
                                 // Throttle pose updates by a tenth of a second
                                 if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    // Add current location to list of safe points
+                                    if (recordingSafePath) {
+                                        safePoints.add(new SafePoint(pose.translation));
+                                    }
 
                                     navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkTwoLocation);
                                     sendRobotCommand(navigationInfo.getCommand());
@@ -434,7 +411,27 @@ public class AutonomousControlActivity extends Activity {
                                     }
 
                                     updateTextViews(pose, navigationInfo);
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+                            }
 
+                            else if (goingToStartOfSafePath) {
+
+                                double[] startPoint = safePath.getSafePath().get(0).getPoint();
+
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, startPoint);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    if (navigationInfo.getCommand() == 's') {
+                                        goingToStartOfSafePath = false;
+                                        followSafePath = true;
+                                        sendSpeakString("Following safe path");
+                                    }
+
+                                    updateTextViews(pose, navigationInfo);
                                     lastUpdateTime = System.currentTimeMillis();
                                 }
                             }
@@ -449,6 +446,31 @@ public class AutonomousControlActivity extends Activity {
             }
         });
 
+    }
+
+    private void followSafePath() {
+        ArrayList<SafePoint> safe = safePath.getSafePath();
+
+        for (int i = 0; i < safe.size();) {
+            if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                TangoPoseData pose = getCurrentPose();
+                double[] target = safe.get(i).getPoint();
+                navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, target);
+                sendRobotCommand(navigationInfo.getCommand());
+
+                updateTextViews(pose, navigationInfo);
+                lastUpdateTime = System.currentTimeMillis();
+                i++;
+            }
+        }
+
+        sendSpeakString("I have followed the entire safe path");
+        followSafePath = false;
+    }
+
+    private TangoPoseData getCurrentPose() {
+        return currentPose;
     }
 
     private void goToLocation(final double[] target) {
@@ -582,4 +604,97 @@ public class AutonomousControlActivity extends Activity {
         serialThread.interrupt();
     }
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.ac_saveLandmarkOneButton:
+
+                if (mIsRelocalized) {
+                    double[] translation = currentPose.translation;
+                    landmarkOneLocation[0] = translation[0];
+                    landmarkOneLocation[1] = translation[1];
+                    landmarkOneLocation[2] = translation[2];
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            landmarkOneTextView.setText("X: " + landmarkOneLocation[0] +
+                                    "\nY: " + landmarkOneLocation[1] + "\nZ: " + landmarkOneLocation[2]);
+                        }
+                    });
+
+                    sendSpeakString("Target one recorded");
+                }
+                break;
+
+            case R.id.ac_saveLandmarkTwoButton:
+
+                if (mIsRelocalized) {
+                    double[] translation = currentPose.translation;
+                    landmarkTwoLocation[0] = translation[0];
+                    landmarkTwoLocation[1] = translation[1];
+                    landmarkTwoLocation[2] = translation[2];
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            landmarkTwoTextView.setText("X: " + landmarkTwoLocation[0] +
+                                    "\nY: " + landmarkTwoLocation[1] + "\nZ: " + landmarkTwoLocation[2]);
+                        }
+                    });
+
+                    sendSpeakString("Target two recorded");
+                }
+                break;
+
+            case R.id.ac_goToLandmarkOneButton:
+                goToLandmarkOne = true;
+                goToLandmarkTwo = false;
+                break;
+
+            case R.id.ac_goToLandmarkTwoButton:
+                goToLandmarkTwo = true;
+                goToLandmarkOne = false;
+                break;
+
+            case R.id.ac_speakCommandButton:
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+
+                try {
+                    startActivityForResult(intent, REQ_CODE_SPEECH_INPUT);
+                } catch (ActivityNotFoundException a) {
+                    System.out.println("error");
+                }
+                break;
+
+            case R.id.ac_recordSafePathButton:
+                recordingSafePath = true;
+                sendSpeakString("Recording safe path");
+                break;
+
+            case R.id.ac_stopSafePathButton:
+                recordingSafePath = false;
+                safePathRecorded = true;
+                sendSpeakString("Done recording safe path");
+                safePath = new SafePath(safePoints);
+                break;
+
+            case R.id.ac_followSafePathButton:
+                goToLandmarkOne = false;
+                goToLandmarkTwo = false;
+                goingToStartOfSafePath = true;
+                sendSpeakString("Going to start of safe path");
+                //followSafePath = true;
+                break;
+
+            case R.id.ac_viewSafePathButton:
+                Toast.makeText(getApplicationContext(), safePath.getSafePathString(), Toast.LENGTH_LONG).show();
+                break;
+
+            default:
+                break;
+        }
+    }
 }

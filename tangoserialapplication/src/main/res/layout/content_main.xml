@@ -19,14 +19,15 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="100dp"
         android:orientation="horizontal">
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Manual"
-            android:id="@+id/manualControlButton"/>
+            android:id="@+id/manualControlButton"
+            android:layout_marginEnd="50dp"/>
 
         <Button
             android:layout_width="wrap_content"
@@ -39,14 +40,15 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="100dp"
         android:orientation="horizontal">
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Autonomous"
-            android:id="@+id/autonomousControlButton" />
+            android:id="@+id/autonomousControlButton"
+            android:layout_marginEnd="50dp"/>
 
         <Button
             android:layout_width="wrap_content"

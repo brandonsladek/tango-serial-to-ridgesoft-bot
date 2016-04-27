@@ -19,19 +19,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:layout_marginBottom="30dp"
-                android:text="Text1"
+                android:text="ADF UUID"
                 android:id="@+id/ac_adfUUIDTextView"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="30dp"
-                android:text="Text2"
+                android:text="Our Rotation"
                 android:id="@+id/ac_ourRotationTextView"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="30dp"
-                android:text="Text3"
+                android:text="Go Rotation"
                 android:id="@+id/ac_goRotationTextView"/>
 
         </LinearLayout>
@@ -46,19 +46,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:layout_marginBottom="30dp"
-                android:text="Text4"
+                android:text="Command"
                 android:id="@+id/ac_directionCommandTextView"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="30dp"
-                android:text="Text5"
+                android:text="Localization"
                 android:id="@+id/ac_localizationStatusTextView"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="30dp"
-                android:text="Text6"
+                android:text="Pose Data"
                 android:id="@+id/ac_poseDataTextView"/>
         </LinearLayout>
 
@@ -66,7 +66,7 @@
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="100dp"
+        android:layout_height="75dp"
         android:orientation="horizontal">
 
         <Button
@@ -96,7 +96,7 @@
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="100dp"
+        android:layout_height="75dp"
         android:orientation="horizontal">
 
         <Button
@@ -126,7 +126,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="75dp"
         android:orientation="horizontal">
 
         <Button
@@ -142,6 +142,50 @@
             android:layout_height="wrap_content"
             android:text="Spoken Command"
             android:id="@+id/ac_spokenCommandTextView" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Safe Path Shenanigans..."/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="75dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Record"
+            android:id="@+id/ac_recordSafePathButton"
+            android:layout_marginRight="25dp">
+        </Button>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop"
+            android:id="@+id/ac_stopSafePathButton"
+            android:layout_marginRight="25dp">
+        </Button>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Follow"
+            android:id="@+id/ac_followSafePathButton"
+            android:layout_marginRight="25dp">
+        </Button>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="View Points"
+            android:id="@+id/ac_viewSafePathButton"
+            android:layout_marginRight="25dp">
+        </Button>
 
     </LinearLayout>
 

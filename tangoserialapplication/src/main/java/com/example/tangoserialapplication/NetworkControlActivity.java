@@ -61,8 +61,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     Thread ttsThread;
     Long lastUpdateTime;
 
-
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
@@ -398,12 +396,13 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         mConfig = setTangoConfig(mTango, true, false);
                         onResume();
 
-                    }  else if (read.equals("adfSave")) {
+                    }  else if (read.contains("adfSave")) {
                         if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
                             String data = read;
                             String adfName = data.split(" ")[1];
-                            saveAdfTask = new SaveAdfTask(context, context, mTango, adfName);
-                            saveAdfTask.execute();
+                            saveAdf(adfName);
+                            //saveAdfTask = new SaveAdfTask(context, context, mTango, adfName);
+                            //saveAdfTask.execute();
                         }
 
                     }  else if (read.equals("adfLoad")) {

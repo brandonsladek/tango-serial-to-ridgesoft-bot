@@ -66,7 +66,7 @@ public class NavigationLogic {
         return navigationInfo;
     }
 
-    private double getDistance(double[] ourLocation, double[] goLocation) {
+    public double getDistance(double[] ourLocation, double[] goLocation) {
 
         double xDiff = Math.abs(ourLocation[0] - goLocation[0]);
         double yDiff = Math.abs(ourLocation[1] - goLocation[1]);
@@ -102,7 +102,7 @@ public class NavigationLogic {
 
     private char getDirectionCommand(double ourRotation, double goRotation, double distance) {
 
-        if (distance < 0.1) {
+        if (distance < 0.05) {
             // Tell the robot to stop
             return 's';
         } else {
