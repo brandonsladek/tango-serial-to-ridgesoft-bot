@@ -35,6 +35,7 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private ServerSocket serverSocket;
     private TextView mostRecentMessageTextView;
     private TextView localizationStatusTextView;
+    private TextView adfUUIDTextView;
     private TangoSerialConnection tangoSerialConnection;
     private TextToSpeechThread tts;
     private NavigationLogic navigationLogic;
@@ -42,8 +43,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private int SERVERPORT = 5010;
     private String landmark1Name;
     private String landmark2Name;
-    private double[] landmark1;
-    private double[] landmark2;
+    private double[] landmarkOneLocation;
+    private double[] landmarkTwoLocation;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
@@ -56,6 +57,22 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private UsbManager usbManager;
     private String TAG = NetworkControlActivity.class.getSimpleName();
     private SaveAdfTask saveAdfTask;
+    private NavigationInfo navigationInfo;
+
+    private boolean adfLoadSpecific = false;
+    private String adfToLoadName = "";
+
+    private SafePath safePath;
+
+    private boolean goToLandmarkOne = false;
+    private boolean goToLandmarkTwo = false;
+    private boolean goingToStartOfSafePath = false;
+    private boolean driftCorrectionMode = false;
+
+    private boolean recordingSafePath = false;
+    private boolean safePathRecorded = false;
+    ArrayList<SafePoint> safePoints = new ArrayList<>();
+
     Handler updateConversationHandler;
     Thread serverThread = null;
     Thread ttsThread;
@@ -72,6 +89,7 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         currentCommandTextView = (TextView) findViewById(R.id.nc_currentCommandTextView);
         localizationStatusTextView = (TextView) findViewById(R.id.nc_localizationStatusTextView);
         localizationStatusTextView.setText("Not localized");
+        adfUUIDTextView = (TextView) findViewById(R.id.nc_adfUUIDTextView);
 
         updateConversationHandler = new Handler();
 
@@ -117,15 +135,41 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 
         // Check for Load ADF/Constant Space relocalization mode
         if (isLoadAdf) {
+
             ArrayList<String> fullUUIDList = new ArrayList<String>();
 
             // Returns a list of ADFs with their UUIDs
             fullUUIDList = tango.listAreaDescriptions();
 
-            // Load the most recent ADF
-            if (fullUUIDList.size() > 0) {
-                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-                        fullUUIDList.get(fullUUIDList.size()-1));
+            if (adfLoadSpecific) {
+                // Load the ADF specified
+                if (fullUUIDList.size() > 0) {
+
+                    int index = -1;
+
+                    for (int i = 0; i < fullUUIDList.size(); i++) {
+                        if (getName(fullUUIDList.get(i)).equals(adfToLoadName)) {
+                            index = i;
+                        }
+                    }
+                    config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                            fullUUIDList.get(index));
+
+                    final String adfName = getName(fullUUIDList.get(index));
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            adfUUIDTextView.setText("ADF Using: " + adfName);
+                        }
+                    });
+                }
+            } else {
+                // Load the most recent ADF
+                if (fullUUIDList.size() > 0) {
+                    config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                            fullUUIDList.get(fullUUIDList.size() - 1));
+                }
             }
         }
         return config;
@@ -152,10 +196,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
      */
     private void initializePoseData() {
         currentPose = new TangoPoseData();
-    }
-
-    public TangoPoseData getCurrentPose() {
-        return currentPose;
     }
 
     /**
@@ -211,19 +251,102 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         }
                     }
                     // Process new ADF to device pose
-                    else if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
+                    if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_DEVICE) {
 
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            // Throttle pose updates by a tenth of a second
-                            if (System.currentTimeMillis() - lastUpdateTime > 100) {
+                            currentPose = pose;
+                            updateTextViews(pose, null);
 
-                                currentPose = pose;
+                            // Add current location to list of safe points
+                            if (recordingSafePath) {
+                                safePoints.add(new SafePoint(pose.translation));
+                            }
 
-                                updateTextViews(pose, null);
+                            if (driftCorrectionMode) {
+                                double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
 
-                                lastUpdateTime = System.currentTimeMillis();
+                                if (distanceFromSafePath < 0.075) {
+                                    driftCorrectionMode = false;
+                                    return;
+                                }
+
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, closestSafePathPoint);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+                            }
+
+                            else if (goToLandmarkOne) {
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+//                                    // Add current location to list of safe points
+//                                    if (recordingSafePath) {
+//                                        safePoints.add(new SafePoint(pose.translation));
+//                                    }
+
+                                    if (safePathRecorded) {
+                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+
+                                        if (distanceFromSafePath > 0.075) {
+                                            sendSpeakString("Entering drift correction mode");
+                                            driftCorrectionMode = true;
+                                            return;
+                                        }
+                                    }
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkOneLocation);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    if (navigationInfo.getCommand() == 's') {
+                                        goToLandmarkOne = false;
+                                        sendSpeakString("Engaging target one");
+                                    }
+
+                                    updateTextViews(pose, navigationInfo);
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+                            }
+
+                            else if (goToLandmarkTwo) {
+                                // Throttle pose updates by a tenth of a second
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+//                                    // Add current location to list of safe points
+//                                    if (recordingSafePath) {
+//                                        safePoints.add(new SafePoint(pose.translation));
+//                                    }
+
+                                    if (safePathRecorded) {
+                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+
+                                        if (distanceFromSafePath > 0.075) {
+                                            sendSpeakString("Entering drift correction mode");
+                                            driftCorrectionMode = true;
+                                            return;
+                                        }
+                                    }
+
+                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkTwoLocation);
+                                    sendRobotCommand(navigationInfo.getCommand());
+
+                                    if (navigationInfo.getCommand() == 's') {
+                                        goToLandmarkTwo = false;
+                                        sendSpeakString("Engaging target two");
+                                    }
+
+                                    updateTextViews(pose, navigationInfo);
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
                             }
                         }
                     }
@@ -390,13 +513,17 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         thread.start();
                         updateConversationHandler.post(new updateUIThread("Connected!"));
 
-                    } else if (read.equals("recordADF")) {
+                    }
+
+                    else if (read.equals("recordADF")) {
                         onPause();
                         // Create new tango config with learning mode on this time
                         mConfig = setTangoConfig(mTango, true, false);
                         onResume();
 
-                    }  else if (read.contains("adfSave")) {
+                    }
+
+                    else if (read.contains("adfSave")) {
                         if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
                             String data = read;
                             String adfName = data.split(" ")[1];
@@ -405,30 +532,50 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                             //saveAdfTask.execute();
                         }
 
-                    }  else if (read.equals("adfLoad")) {
+                    }
+
+                    else if (read.contains("adfLoad")) {
+                        adfLoadSpecific = true;
+                        String data = read;
+                        adfToLoadName = data.split(" ")[1];
                         onPause();
                         mConfig = setTangoConfig(mTango, false, true);
                         onResume();
+                    }
 
-                    } else if (read.contains("save")) {
+                    else if (read.equals("startSafePathRecord")) {
+                        recordingSafePath = true;
+                        sendSpeakString("Recording safe path");
+                    }
+
+                    else if (read.equals("stopSafePathRecord")) {
+                        recordingSafePath = false;
+                        safePathRecorded = true;
+                        sendSpeakString("Done recording safe path");
+                        safePath = new SafePath(safePoints);
+                    }
+
+                    else if (read.contains("save")) {
                         String landmarkName = read;
                         String commands[] = landmarkName.split(" ");
 
                         if (landmark1Name == null) {
                             landmark1Name = commands[1];
-                            landmark1 = currentPose.translation;
+                            landmarkOneLocation = currentPose.translation;
                             sendSpeakString("Target 1 recorded");
                         } else {
                             landmark2Name = commands[1];
-                            landmark2 = currentPose.translation;
+                            landmarkTwoLocation = currentPose.translation;
                             sendSpeakString("Target 2 recorded");
                         }
 
                     } else if (read.equals("goto1")) {
-                        goToLocation(landmark1);
+                        goToLandmarkOne = true;
+                        goToLandmarkTwo = false;
 
                     } else if (read.equals("goto2")) {
-                        goToLocation(landmark2);
+                        goToLandmarkTwo = true;
+                        goToLandmarkOne = false;
 
                     } else {
                         if (tangoSerialConnection != null) {

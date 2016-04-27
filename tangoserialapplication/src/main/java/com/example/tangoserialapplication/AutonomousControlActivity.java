@@ -65,13 +65,13 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private Button stopSafePathButton;
     private Button followSafePathButton;
     private Button viewSafePathButton;
+    private Button deleteSafePathButton;
 
     private SafePath safePath;
 
     private boolean goToLandmarkOne = false;
     private boolean goToLandmarkTwo = false;
     private boolean goingToStartOfSafePath = false;
-    private boolean followSafePath = false;
     private boolean driftCorrectionMode = false;
 
     private boolean recordingSafePath = false;
@@ -115,6 +115,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         stopSafePathButton = (Button) findViewById(R.id.ac_stopSafePathButton);
         followSafePathButton = (Button) findViewById(R.id.ac_followSafePathButton);
         viewSafePathButton = (Button) findViewById(R.id.ac_viewSafePathButton);
+        deleteSafePathButton = (Button) findViewById(R.id.ac_deleteSafePathButton);
 
         saveLandmarkOneButton.setOnClickListener(this);
         saveLandmarkTwoButton.setOnClickListener(this);
@@ -125,6 +126,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         stopSafePathButton.setOnClickListener(this);
         followSafePathButton.setOnClickListener(this);
         viewSafePathButton.setOnClickListener(this);
+        deleteSafePathButton.setOnClickListener(this);
 
         // Start thread for usb serial connection
         tangoSerialConnection = TangoSerialConnection.getInstance();
@@ -340,12 +342,13 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
                             currentPose = pose;
+                            updateTextViews(pose, null);
 
                             if (driftCorrectionMode) {
                                 double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
                                 double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
 
-                                if (distanceFromSafePath < 0.1) {
+                                if (distanceFromSafePath < 0.075) {
                                     driftCorrectionMode = false;
                                     return;
                                 }
@@ -373,7 +376,8 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                         double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
                                         double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
 
-                                        if (distanceFromSafePath > 0.1) {
+                                        if (distanceFromSafePath > 0.075) {
+                                            sendSpeakString("Entering drift correction mode");
                                             driftCorrectionMode = true;
                                             return;
                                         }
@@ -402,6 +406,17 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                         safePoints.add(new SafePoint(pose.translation));
                                     }
 
+                                    if (safePathRecorded) {
+                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
+                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+
+                                        if (distanceFromSafePath > 0.075) {
+                                            sendSpeakString("Entering drift correction mode");
+                                            driftCorrectionMode = true;
+                                            return;
+                                        }
+                                    }
+
                                     navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkTwoLocation);
                                     sendRobotCommand(navigationInfo.getCommand());
 
@@ -415,26 +430,25 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                 }
                             }
 
-                            else if (goingToStartOfSafePath) {
-
-                                double[] startPoint = safePath.getSafePath().get(0).getPoint();
-
-                                // Throttle pose updates by a tenth of a second
-                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, startPoint);
-                                    sendRobotCommand(navigationInfo.getCommand());
-
-                                    if (navigationInfo.getCommand() == 's') {
-                                        goingToStartOfSafePath = false;
-                                        followSafePath = true;
-                                        sendSpeakString("Following safe path");
-                                    }
-
-                                    updateTextViews(pose, navigationInfo);
-                                    lastUpdateTime = System.currentTimeMillis();
-                                }
-                            }
+//                            else if (goingToStartOfSafePath) {
+//
+//                                double[] startPoint = safePath.getSafePath().get(0).getPoint();
+//
+//                                // Throttle pose updates by a tenth of a second
+//                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+//
+//                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, startPoint);
+//                                    sendRobotCommand(navigationInfo.getCommand());
+//
+//                                    if (navigationInfo.getCommand() == 's') {
+//                                        goingToStartOfSafePath = false;
+//                                        sendSpeakString("Starting to follow the safe path");
+//                                    }
+//
+//                                    updateTextViews(pose, navigationInfo);
+//                                    lastUpdateTime = System.currentTimeMillis();
+//                                }
+//                            }
                         }
                     }
                 }
@@ -446,31 +460,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
             }
         });
 
-    }
-
-    private void followSafePath() {
-        ArrayList<SafePoint> safe = safePath.getSafePath();
-
-        for (int i = 0; i < safe.size();) {
-            if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                TangoPoseData pose = getCurrentPose();
-                double[] target = safe.get(i).getPoint();
-                navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, target);
-                sendRobotCommand(navigationInfo.getCommand());
-
-                updateTextViews(pose, navigationInfo);
-                lastUpdateTime = System.currentTimeMillis();
-                i++;
-            }
-        }
-
-        sendSpeakString("I have followed the entire safe path");
-        followSafePath = false;
-    }
-
-    private TangoPoseData getCurrentPose() {
-        return currentPose;
     }
 
     private void goToLocation(final double[] target) {
@@ -691,6 +680,12 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
             case R.id.ac_viewSafePathButton:
                 Toast.makeText(getApplicationContext(), safePath.getSafePathString(), Toast.LENGTH_LONG).show();
+                break;
+
+            case R.id.ac_deleteSafePathButton:
+                safePoints = new ArrayList<SafePoint>();
+                safePathRecorded = false;
+                sendSpeakString("Safe path deleted");
                 break;
 
             default:

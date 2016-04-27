@@ -102,7 +102,7 @@ public class NavigationLogic {
 
     private char getDirectionCommand(double ourRotation, double goRotation, double distance) {
 
-        if (distance < 0.05) {
+        if (distance < 0.025) {
             // Tell the robot to stop
             return 's';
         } else {
