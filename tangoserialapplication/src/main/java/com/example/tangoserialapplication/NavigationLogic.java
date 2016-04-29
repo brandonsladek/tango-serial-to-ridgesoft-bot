@@ -141,4 +141,30 @@ public class NavigationLogic {
         return Math.toDegrees(Math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z)) + 180;
     }
 
+    public char equalizeRotations(int ourRotation, int goRotation) {
+        if (ourRotation < goRotation) {
+            double diff = goRotation - ourRotation;
+
+            if (diff < 5) {
+                return 's';
+            } else if (diff <= 180) {
+                // Tell the robot to turn right
+                return 'l';
+            } else {
+                // Tell the robot to turn left
+                return 'r';
+            }
+        } else {
+            double diff = ourRotation - goRotation;
+
+            if (diff < 5) {
+                return 's';
+            } else if (diff <= 180) {
+                return 'r';
+            } else {
+                return 'l';
+            }
+        }
+    }
+
 }

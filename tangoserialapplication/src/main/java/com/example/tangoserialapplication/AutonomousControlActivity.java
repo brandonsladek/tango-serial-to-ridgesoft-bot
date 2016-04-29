@@ -8,6 +8,7 @@ import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Message;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -77,6 +78,10 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private boolean recordingSafePath = false;
     private boolean safePathRecorded = false;
     ArrayList<SafePoint> safePoints = new ArrayList<>();
+
+    private SpeechRecognizer speechRecognizer;
+    private Intent speechRecognizerIntent;
+    private boolean isListening;
 
     private NavigationInfo navigationInfo;
 
@@ -159,7 +164,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         super.onActivityResult(requestCode, resultCode, data);
 
         switch (requestCode) {
-            case REQ_CODE_SPEECH_INPUT: {
+            case REQ_CODE_SPEECH_INPUT:
                 if (resultCode == RESULT_OK && null != data) {
                     final ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
 
@@ -172,9 +177,9 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                     checkForCommands(result.get(0));
                 }
                 break;
-            }
-
         }
+
+        onResume();
     }
 
     private void checkForCommands(String speech) {
@@ -560,7 +565,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         try {
             setUpTangoListeners();
         } catch (TangoErrorException e) {
-            Toast.makeText(getApplicationContext(), "TangoErrorException!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "TangoErrorException with setting up listeners!", Toast.LENGTH_SHORT).show();
         } catch (SecurityException e) {
             Toast.makeText(getApplicationContext(), "SecurityException!", Toast.LENGTH_SHORT).show();
         }
@@ -571,7 +576,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         } catch (TangoOutOfDateException e) {
             Toast.makeText(getApplicationContext(), "TangoOutOfDateException!", Toast.LENGTH_SHORT).show();
         } catch (TangoErrorException e) {
-            Toast.makeText(getApplicationContext(), "TangoErrorException!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "TangoErrorException connecting Tango!", Toast.LENGTH_SHORT).show();
         } catch (TangoInvalidException e) {
             Toast.makeText(getApplicationContext(), "TangoInvalidException!", Toast.LENGTH_SHORT).show();
         }

@@ -45,6 +45,7 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private String landmark2Name;
     private double[] landmarkOneLocation;
     private double[] landmarkTwoLocation;
+    private TargetLocation landmarkOneTarget;
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
@@ -68,6 +69,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private boolean goToLandmarkTwo = false;
     private boolean goingToStartOfSafePath = false;
     private boolean driftCorrectionMode = false;
+
+    private boolean equalizingRotationsMode = false;
 
     private boolean recordingSafePath = false;
     private boolean safePathRecorded = false;
@@ -261,12 +264,12 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 
                             // Add current location to list of safe points
                             if (recordingSafePath) {
-                                safePoints.add(new SafePoint(pose.translation));
+                                safePoints.add(new SafePoint(roundLocation(pose.translation)));
                             }
 
                             if (driftCorrectionMode) {
-                                double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
-                                double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+                                double[] closestSafePathPoint = safePath.getClosestSafePathPoint(roundLocation(pose.translation));
+                                double distanceFromSafePath = navigationLogic.getDistance(roundLocation(pose.translation), roundLocation(closestSafePathPoint));
 
                                 if (distanceFromSafePath < 0.075) {
                                     driftCorrectionMode = false;
@@ -276,8 +279,23 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                                 // Throttle pose updates by a tenth of a second
                                 if (System.currentTimeMillis() - lastUpdateTime > 100) {
 
-                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, closestSafePathPoint);
+                                    navigationInfo = navigationLogic.navigationInfo(roundLocation(pose.translation), pose.rotation, roundLocation(closestSafePathPoint));
                                     sendRobotCommand(navigationInfo.getCommand());
+
+                                    lastUpdateTime = System.currentTimeMillis();
+                                }
+                            }
+
+                            else if (equalizingRotationsMode) {
+                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+                                    char command = navigationLogic.equalizeRotations((int) getOurRotation(currentPose.rotation), landmarkOneTarget.getRotation());
+                                    sendRobotCommand(command);
+
+                                    if (command == 's') {
+                                        equalizingRotationsMode = false;
+                                        sendSpeakString("Engaging target");
+                                    }
 
                                     lastUpdateTime = System.currentTimeMillis();
                                 }
@@ -293,8 +311,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 //                                    }
 
                                     if (safePathRecorded) {
-                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
-                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(roundLocation(pose.translation));
+                                        double distanceFromSafePath = navigationLogic.getDistance(roundLocation(pose.translation), roundLocation(closestSafePathPoint));
 
                                         if (distanceFromSafePath > 0.075) {
                                             sendSpeakString("Entering drift correction mode");
@@ -303,12 +321,13 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                                         }
                                     }
 
-                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkOneLocation);
+                                    navigationInfo = navigationLogic.navigationInfo(roundLocation(pose.translation), pose.rotation, roundLocation(landmarkOneTarget.getTargetLocation()));
                                     sendRobotCommand(navigationInfo.getCommand());
 
                                     if (navigationInfo.getCommand() == 's') {
                                         goToLandmarkOne = false;
-                                        sendSpeakString("Engaging target one");
+                                        equalizingRotationsMode = true;
+                                        //sendSpeakString("Engaging target one");
                                     }
 
                                     updateTextViews(pose, navigationInfo);
@@ -358,6 +377,10 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                 // We will use this method for dealing with the camera
             }
         });
+    }
+
+    private double[] roundLocation(double[] originalLocation) {
+        return new double[]{round(originalLocation[0]), round(originalLocation[1]), round(originalLocation[2])};
     }
 
     private void updateTextViews(final TangoPoseData pose, final NavigationInfo navigationInfo) {
@@ -561,7 +584,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 
                         if (landmark1Name == null) {
                             landmark1Name = commands[1];
-                            landmarkOneLocation = currentPose.translation;
+                            //landmarkOneLocation = currentPose.translation;
+                            landmarkOneTarget = new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation));
                             sendSpeakString("Target 1 recorded");
                         } else {
                             landmark2Name = commands[1];
