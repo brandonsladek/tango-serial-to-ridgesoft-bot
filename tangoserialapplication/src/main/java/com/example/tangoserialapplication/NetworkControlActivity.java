@@ -2,6 +2,7 @@ package com.example.tangoserialapplication;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -27,25 +28,36 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /** Brandon Sladek and John Waters */
 
-public class NetworkControlActivity extends Activity implements SaveAdfTask.SaveAdfListener {
+public class NetworkControlActivity extends Activity {
 
     private ServerSocket serverSocket;
+    private int SERVERPORT = 5010;
+
     private TextView mostRecentMessageTextView;
     private TextView localizationStatusTextView;
+    private TextView ourRotationTextView;
+    private TextView goRotationTextView;
     private TextView adfUUIDTextView;
+
     private TangoSerialConnection tangoSerialConnection;
     private TextToSpeechThread tts;
+
     private NavigationLogic navigationLogic;
     private NetworkControlActivity context = this;
-    private int SERVERPORT = 5010;
+
     private String landmark1Name;
     private String landmark2Name;
-    private double[] landmarkOneLocation;
-    private double[] landmarkTwoLocation;
+
     private TargetLocation landmarkOneTarget;
+    private TargetLocation landmarkTwoTarget;
+    private TargetLocation currentTargetLandmark;
+
+    HashMap<String, TargetLocation> targetLocationsByName = new HashMap<>();
+
     private Tango mTango;
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
@@ -57,7 +69,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     private TextView currentCommandTextView;
     private UsbManager usbManager;
     private String TAG = NetworkControlActivity.class.getSimpleName();
-    private SaveAdfTask saveAdfTask;
     private NavigationInfo navigationInfo;
 
     private boolean adfLoadSpecific = false;
@@ -67,9 +78,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 
     private boolean goToLandmarkOne = false;
     private boolean goToLandmarkTwo = false;
-    private boolean goingToStartOfSafePath = false;
+    private boolean goToLandmarkByName = false;
     private boolean driftCorrectionMode = false;
-
     private boolean equalizingRotationsMode = false;
 
     private boolean recordingSafePath = false;
@@ -77,9 +87,10 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     ArrayList<SafePoint> safePoints = new ArrayList<>();
 
     Handler updateConversationHandler;
-    Thread serverThread = null;
-    Thread ttsThread;
-    Long lastUpdateTime;
+    private Thread serverThread = null;
+    private Thread ttsThread;
+    private Thread serialThread;
+    private Long lastUpdateTime;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -93,8 +104,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         localizationStatusTextView = (TextView) findViewById(R.id.nc_localizationStatusTextView);
         localizationStatusTextView.setText("Not localized");
         adfUUIDTextView = (TextView) findViewById(R.id.nc_adfUUIDTextView);
-
-        updateConversationHandler = new Handler();
+        ourRotationTextView = (TextView) findViewById(R.id.nc_ourRotationTextView);
+        goRotationTextView = (TextView) findViewById(R.id.nc_goRotationTextView);
 
         navigationLogic = new NavigationLogic();
 
@@ -104,8 +115,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
 
-        this.serverThread = new Thread(new ServerThread());
-        this.serverThread.start();
+        serverThread = new Thread(new ServerThread());
+        serverThread.start();
 
         tts = TextToSpeechThread.getInstance();
         tts.setContext(getApplicationContext());
@@ -114,8 +125,15 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
 
         usbManager = (UsbManager) this.getSystemService(Context.USB_SERVICE);
 
-        lastUpdateTime = System.currentTimeMillis();
+        tangoSerialConnection = TangoSerialConnection.getInstance();
+        tangoSerialConnection.setUsbManager(usbManager);
+        serialThread = new Thread(tangoSerialConnection);
+        serialThread.start();
 
+        updateConversationHandler = new Handler();
+        updateConversationHandler.post(new updateUIThread("Connected!"));
+
+        lastUpdateTime = System.currentTimeMillis();
     }
 
     // All of the methods below this point are from the Google Project Tango area learning tutorials
@@ -243,8 +261,8 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                     if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
-                            mIsRelocalized = true;
 
+                            mIsRelocalized = true;
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -260,59 +278,39 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
                             currentPose = pose;
+                            double[] ourLocation = roundLocation(pose.translation);
                             updateTextViews(pose, null);
 
                             // Add current location to list of safe points
                             if (recordingSafePath) {
-                                safePoints.add(new SafePoint(roundLocation(pose.translation)));
+                                safePoints.add(new SafePoint(ourLocation));
                             }
 
                             if (driftCorrectionMode) {
-                                double[] closestSafePathPoint = safePath.getClosestSafePathPoint(roundLocation(pose.translation));
-                                double distanceFromSafePath = navigationLogic.getDistance(roundLocation(pose.translation), roundLocation(closestSafePathPoint));
-
-                                if (distanceFromSafePath < 0.075) {
-                                    driftCorrectionMode = false;
-                                    return;
-                                }
-
-                                // Throttle pose updates by a tenth of a second
-                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                                    navigationInfo = navigationLogic.navigationInfo(roundLocation(pose.translation), pose.rotation, roundLocation(closestSafePathPoint));
-                                    sendRobotCommand(navigationInfo.getCommand());
-
-                                    lastUpdateTime = System.currentTimeMillis();
-                                }
+                                driftCorrectionMode(pose, ourLocation);
                             }
 
                             else if (equalizingRotationsMode) {
-                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                                    char command = navigationLogic.equalizeRotations((int) getOurRotation(currentPose.rotation), landmarkOneTarget.getRotation());
-                                    sendRobotCommand(command);
-
-                                    if (command == 's') {
-                                        equalizingRotationsMode = false;
-                                        sendSpeakString("Engaging target");
-                                    }
-
-                                    lastUpdateTime = System.currentTimeMillis();
+                                if (goToLandmarkOne) {
+                                    equalizeRotations(pose, landmarkOneTarget);
+                                } else if (goToLandmarkTwo) {
+                                    equalizeRotations(pose, landmarkTwoTarget);
+                                } else if (goToLandmarkByName) {
+                                    equalizeRotations(pose, currentTargetLandmark);
                                 }
+                            }
+
+                            else if (goToLandmarkByName) {
+                                goToTargetLandmark(pose, currentTargetLandmark);
                             }
 
                             else if (goToLandmarkOne) {
                                 // Throttle pose updates by a tenth of a second
                                 if (System.currentTimeMillis() - lastUpdateTime > 100) {
 
-//                                    // Add current location to list of safe points
-//                                    if (recordingSafePath) {
-//                                        safePoints.add(new SafePoint(pose.translation));
-//                                    }
-
                                     if (safePathRecorded) {
-                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(roundLocation(pose.translation));
-                                        double distanceFromSafePath = navigationLogic.getDistance(roundLocation(pose.translation), roundLocation(closestSafePathPoint));
+                                        double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
+                                        double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
 
                                         if (distanceFromSafePath > 0.075) {
                                             sendSpeakString("Entering drift correction mode");
@@ -321,13 +319,12 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                                         }
                                     }
 
-                                    navigationInfo = navigationLogic.navigationInfo(roundLocation(pose.translation), pose.rotation, roundLocation(landmarkOneTarget.getTargetLocation()));
+                                    navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, roundLocation(landmarkOneTarget.getTargetLocation()));
                                     sendRobotCommand(navigationInfo.getCommand());
 
                                     if (navigationInfo.getCommand() == 's') {
                                         goToLandmarkOne = false;
                                         equalizingRotationsMode = true;
-                                        //sendSpeakString("Engaging target one");
                                     }
 
                                     updateTextViews(pose, navigationInfo);
@@ -339,14 +336,9 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                                 // Throttle pose updates by a tenth of a second
                                 if (System.currentTimeMillis() - lastUpdateTime > 100) {
 
-//                                    // Add current location to list of safe points
-//                                    if (recordingSafePath) {
-//                                        safePoints.add(new SafePoint(pose.translation));
-//                                    }
-
                                     if (safePathRecorded) {
-                                        double[] closestSafePathPoint = safePath.getClosestSafePathPoint(pose.translation);
-                                        double distanceFromSafePath = navigationLogic.getDistance(pose.translation, closestSafePathPoint);
+                                        double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
+                                        double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
 
                                         if (distanceFromSafePath > 0.075) {
                                             sendSpeakString("Entering drift correction mode");
@@ -355,7 +347,7 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                                         }
                                     }
 
-                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, landmarkTwoLocation);
+                                    navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, roundLocation(landmarkTwoTarget.getTargetLocation()));
                                     sendRobotCommand(navigationInfo.getCommand());
 
                                     if (navigationInfo.getCommand() == 's') {
@@ -379,6 +371,71 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         });
     }
 
+    private void goToTargetLandmark(TangoPoseData pose, TargetLocation targetLandmark) {
+
+        double[] ourLocation = roundLocation(pose.translation);
+
+        // Throttle pose updates by a tenth of a second
+        if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+            if (safePathRecorded) {
+                double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
+                double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
+
+                if (distanceFromSafePath > 0.075) {
+                    sendSpeakString("Entering drift correction mode");
+                    driftCorrectionMode = true;
+                    return;
+                }
+            }
+
+            navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, roundLocation(targetLandmark.getTargetLocation()));
+            sendRobotCommand(navigationInfo.getCommand());
+
+            if (navigationInfo.getCommand() == 's') {
+                goToLandmarkByName = false;
+                equalizingRotationsMode = true;
+            }
+
+            updateTextViews(pose, navigationInfo);
+            lastUpdateTime = System.currentTimeMillis();
+        }
+    }
+
+    private void driftCorrectionMode(TangoPoseData pose, double[] ourLocation) {
+        double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
+        double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
+
+        if (distanceFromSafePath < 0.075) {
+            driftCorrectionMode = false;
+            return;
+        }
+
+        // Throttle pose updates by a tenth of a second
+        if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+            navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, closestSafePathPoint);
+            sendRobotCommand(navigationInfo.getCommand());
+
+            lastUpdateTime = System.currentTimeMillis();
+        }
+    }
+
+    private void equalizeRotations(TangoPoseData pose, TargetLocation targetLocation) {
+        if (System.currentTimeMillis() - lastUpdateTime > 100) {
+
+            char command = navigationLogic.equalizeRotations((int) getOurRotation(pose.rotation), targetLocation.getRotation());
+            sendRobotCommand(command);
+
+            if (command == 's') {
+                equalizingRotationsMode = false;
+                sendSpeakString("Engaging target");
+            }
+
+            lastUpdateTime = System.currentTimeMillis();
+        }
+    }
+
     private double[] roundLocation(double[] originalLocation) {
         return new double[]{round(originalLocation[0]), round(originalLocation[1]), round(originalLocation[2])};
     }
@@ -395,15 +452,17 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         "\nRotation: " + (int) getOurRotation(pose.rotation);
 
                 poseDataTextView.setText(poseString);
-                //currentCommandTextView.setText("Command: " + navigationInfo.getCommand());
-                //goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
-                //ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
+
+                if (navigationInfo != null) {
+                    currentCommandTextView.setText("Command: " + navigationInfo.getCommand());
+                    goRotationTextView.setText("Go: " + navigationInfo.getGoRotation());
+                    ourRotationTextView.setText("Our: " + navigationInfo.getOurRotation());
+                }
             }
         });
     }
 
     private double getOurRotation(double[] rotation) {
-
         double x = rotation[0];
         double y = rotation[1];
         double z = rotation[2];
@@ -459,34 +518,10 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         }
     }
 
-    /**
-     * Handles failed save from mSaveAdfTask.
-     */
-    public void onSaveAdfFailed(String adfName) {
-        String toastMessage = String.format(
-                getResources().getString(R.string.save_adf_failed_toast_format),
-                adfName);
-        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show();
-        saveAdfTask = null;
-    }
-
-    /**
-     * Handles successful save from mSaveAdfTask.
-     */
-    @Override
-    public void onSaveAdfSuccess(String adfName, String adfUuid) {
-        String toastMessage = String.format(
-                getResources().getString(R.string.save_adf_success_toast_format),
-                adfName, adfUuid);
-        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show();
-        saveAdfTask = null;
-        finish();
-    }
-
     class ServerThread implements Runnable {
 
         public void run() {
-            Socket socket = null;
+            Socket socket;
 
             try {
                 serverSocket = new ServerSocket(SERVERPORT);
@@ -529,39 +564,25 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                 try {
                     String read = input.readLine();
 
-                    if (read.equals("c")) {
-                        tangoSerialConnection = TangoSerialConnection.getInstance();
-                        tangoSerialConnection.setUsbManager(usbManager);
-                        Thread thread = new Thread(tangoSerialConnection);
-                        thread.start();
-                        updateConversationHandler.post(new updateUIThread("Connected!"));
-
-                    }
-
-                    else if (read.equals("recordADF")) {
+                    if (read.equals("recordADF")) {
                         onPause();
                         // Create new tango config with learning mode on this time
                         mConfig = setTangoConfig(mTango, true, false);
                         onResume();
-
                     }
 
                     else if (read.contains("adfSave")) {
                         if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
-                            String data = read;
-                            String adfName = data.split(" ")[1];
+                            String adfName = read.split(" ")[1];
                             saveAdf(adfName);
-                            //saveAdfTask = new SaveAdfTask(context, context, mTango, adfName);
-                            //saveAdfTask.execute();
                         }
-
                     }
 
                     else if (read.contains("adfLoad")) {
                         adfLoadSpecific = true;
-                        String data = read;
-                        adfToLoadName = data.split(" ")[1];
+                        adfToLoadName = read.split(" ")[1];
                         onPause();
+                        // Create new tango config and set load adf to true
                         mConfig = setTangoConfig(mTango, false, true);
                         onResume();
                     }
@@ -579,18 +600,19 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                     }
 
                     else if (read.contains("save")) {
-                        String landmarkName = read;
-                        String commands[] = landmarkName.split(" ");
+                        String commands[] = read.split(" ");
+
+                        targetLocationsByName.put(commands[1], new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation)));
+                        sendSpeakString("Target " + commands[1] + " recorded");
 
                         if (landmark1Name == null) {
                             landmark1Name = commands[1];
-                            //landmarkOneLocation = currentPose.translation;
                             landmarkOneTarget = new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation));
-                            sendSpeakString("Target 1 recorded");
+                            //sendSpeakString("Target 1 recorded");
                         } else {
                             landmark2Name = commands[1];
-                            landmarkTwoLocation = currentPose.translation;
-                            sendSpeakString("Target 2 recorded");
+                            landmarkTwoTarget = new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation));
+                            //sendSpeakString("Target 2 recorded");
                         }
 
                     } else if (read.equals("goto1")) {
@@ -601,7 +623,22 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
                         goToLandmarkTwo = true;
                         goToLandmarkOne = false;
 
-                    } else {
+                    } else if (read.contains("goto")) {
+                        goToLandmarkByName = true;
+                        goToLandmarkOne = false;
+                        goToLandmarkTwo = false;
+
+                        String targetLandmarkName = read.split(" ")[1];
+                        currentTargetLandmark = targetLocationsByName.get(targetLandmarkName);
+
+                    } else if (read.equals("startAutonomous")) {
+                        Intent autonomousControlIntent = new Intent(NetworkControlActivity.this, AutonomousControlActivity.class);
+                        autonomousControlIntent.putExtra("LANDMARKS", targetLocationsByName);
+                        autonomousControlIntent.putExtra("SAFE_PATH", safePath);
+                        NetworkControlActivity.this.startActivity(autonomousControlIntent);
+                    }
+
+                    else {
                         if (tangoSerialConnection != null) {
                             sendRobotCommand(read.charAt(0));
                             speakDirection(read.charAt(0));
@@ -621,7 +658,7 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         new Thread(new Runnable() {
             @Override
             public void run() {
-                String adfUuid = null;
+                String adfUuid;
                 try {
                     // Save the ADF.
                     adfUuid = mTango.saveAreaDescription();
@@ -640,15 +677,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         }).start();
     }
 
-    private String getLandmark(int num) {
-        if (num == 1) {
-            return landmark1Name;
-        } else if(num == 2) {
-            return landmark2Name;
-        }
-        return "";
-    }
-
     class updateUIThread implements Runnable {
         private String msg;
 
@@ -660,52 +688,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
         public void run() {
             mostRecentMessageTextView.setText(mostRecentMessageTextView.getText().toString()+"Client Says: "+ msg + "\n");
         }
-    }
-
-    private void goToLocation(final double[] target) {
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                Long lastTime = System.currentTimeMillis();
-                sendSpeakString("Starting");
-
-                NavigationInfo navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
-                char command = navigationInfo.getCommand();
-
-                char previousCommand = 'z';
-                boolean timeToStop = false;
-
-                while (!timeToStop) {
-
-                    if (System.currentTimeMillis() - lastTime > 100) {
-
-                        if (command == CommandValues.MOVE_STOP) {
-                            timeToStop = true;
-                        }
-
-                        lastTime = System.currentTimeMillis();
-                        final char comm = command;
-
-                        if (command != previousCommand) {
-                            sendRobotCommand(command);
-
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    currentCommandTextView.setText("Current command: " + comm);
-                                }
-                            });
-                        }
-                        previousCommand = command;
-                        NavigationInfo newNavInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
-                        command = newNavInfo.getCommand();
-                    }
-                }
-                sendSpeakString("Engaging target");
-            }
-        }).start();
     }
 
     private void sendRobotCommand(char commandValue) {
@@ -725,7 +707,6 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     }
 
     private void speakDirection(char command) {
-
         switch (command) {
             case CommandValues.MOVE_FORWARD:
                 sendSpeakString("Moving forward");
@@ -751,12 +732,11 @@ public class NetworkControlActivity extends Activity implements SaveAdfTask.Save
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
         // Stop threads
         serverThread.interrupt();
         ttsThread.interrupt();
+        serialThread.interrupt();
     }
-
 
     @Override
     protected void onStop() {

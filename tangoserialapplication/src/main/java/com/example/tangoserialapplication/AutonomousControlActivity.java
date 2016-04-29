@@ -25,6 +25,8 @@ import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -224,6 +226,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private TangoConfig setTangoConfig(Tango tango, boolean isLearningMode, boolean isLoadAdf) {
 
         TangoConfig config = tango.getConfig(TangoConfig.CONFIG_TYPE_CURRENT);
+        config.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
 
         // Check if learning mode
         if (isLearningMode) {
@@ -308,8 +311,19 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
         mTango.connectListener(framePairs, new Tango.OnTangoUpdateListener() {
             @Override
-            public void onXyzIjAvailable(TangoXyzIjData xyzij) {
-                // Will have to use XyzIj data for A level
+            public void onXyzIjAvailable(TangoXyzIjData xyzIj) {
+//                byte[] buffer = new byte[xyzIj.xyzCount * 3 * 4];
+//                FileInputStream fileStream = new FileInputStream(
+//                        xyzIj.xyzParcelFileDescriptor.getFileDescriptor());
+//                try {
+//                    fileStream.read(buffer,
+//                            xyzIj.xyzParcelFileDescriptorOffset, buffer.length);
+//                    fileStream.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+                // Do not process the buffer inside the callback because
+                // you will not receive any new data while it processes
             }
 
             // Listen to Tango Events
@@ -330,8 +344,8 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                     if (pose.baseFrame == TangoPoseData.COORDINATE_FRAME_AREA_DESCRIPTION
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
-                            mIsRelocalized = true;
 
+                            mIsRelocalized = true;
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -434,26 +448,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                     lastUpdateTime = System.currentTimeMillis();
                                 }
                             }
-
-//                            else if (goingToStartOfSafePath) {
-//
-//                                double[] startPoint = safePath.getSafePath().get(0).getPoint();
-//
-//                                // Throttle pose updates by a tenth of a second
-//                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-//
-//                                    navigationInfo = navigationLogic.navigationInfo(pose.translation, pose.rotation, startPoint);
-//                                    sendRobotCommand(navigationInfo.getCommand());
-//
-//                                    if (navigationInfo.getCommand() == 's') {
-//                                        goingToStartOfSafePath = false;
-//                                        sendSpeakString("Starting to follow the safe path");
-//                                    }
-//
-//                                    updateTextViews(pose, navigationInfo);
-//                                    lastUpdateTime = System.currentTimeMillis();
-//                                }
-//                            }
                         }
                     }
                 }
@@ -465,52 +459,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
             }
         });
 
-    }
-
-    private void goToLocation(final double[] target) {
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                Long lastTime = System.currentTimeMillis();
-                sendSpeakString("Starting");
-
-                navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
-                char command = navigationInfo.getCommand();
-
-                char previousCommand = 'z';
-                boolean timeToStop = false;
-
-                while (!timeToStop) {
-
-                    if (System.currentTimeMillis() - lastTime > 100) {
-
-                        if (command == CommandValues.MOVE_STOP) {
-                            timeToStop = true;
-                        }
-
-                        lastTime = System.currentTimeMillis();
-                        final char comm = command;
-
-                        if (command != previousCommand) {
-                            sendRobotCommand(command);
-
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    directionCommandTextView.setText("Current command: " + comm);
-                                }
-                            });
-                        }
-                        previousCommand = command;
-                        navigationInfo = navigationLogic.navigationInfo(currentPose.translation, currentPose.rotation, target);
-                        command = navigationInfo.getCommand();
-                    }
-                }
-                sendSpeakString("Engaging target");
-            }
-        }).start();
     }
 
     private void updateTextViews(final TangoPoseData pose, final NavigationInfo navigationInfo) {
@@ -536,7 +484,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     }
 
     private double getOurRotation(double[] rotation) {
-
         double x = rotation[0];
         double y = rotation[1];
         double z = rotation[2];
@@ -616,7 +563,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                     "\nY: " + landmarkOneLocation[1] + "\nZ: " + landmarkOneLocation[2]);
                         }
                     });
-
                     sendSpeakString("Target one recorded");
                 }
                 break;
@@ -636,7 +582,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                                     "\nY: " + landmarkTwoLocation[1] + "\nZ: " + landmarkTwoLocation[2]);
                         }
                     });
-
                     sendSpeakString("Target two recorded");
                 }
                 break;
@@ -680,7 +625,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                 goToLandmarkTwo = false;
                 goingToStartOfSafePath = true;
                 sendSpeakString("Going to start of safe path");
-                //followSafePath = true;
                 break;
 
             case R.id.ac_viewSafePathButton:
@@ -688,7 +632,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                 break;
 
             case R.id.ac_deleteSafePathButton:
-                safePoints = new ArrayList<SafePoint>();
+                safePoints = new ArrayList<>();
                 safePathRecorded = false;
                 sendSpeakString("Safe path deleted");
                 break;
