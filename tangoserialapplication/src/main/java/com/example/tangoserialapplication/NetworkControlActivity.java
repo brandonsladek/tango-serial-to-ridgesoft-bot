@@ -49,11 +49,6 @@ public class NetworkControlActivity extends Activity {
     private NavigationLogic navigationLogic;
     private NetworkControlActivity context = this;
 
-    private String landmark1Name;
-    private String landmark2Name;
-
-    private TargetLocation landmarkOneTarget;
-    private TargetLocation landmarkTwoTarget;
     private TargetLocation currentTargetLandmark;
 
     HashMap<String, TargetLocation> targetLocationsByName = new HashMap<>();
@@ -62,7 +57,7 @@ public class NetworkControlActivity extends Activity {
     private TangoConfig mConfig;
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = false;
-    private boolean mIsConstantSpaceRelocalize = true;
+    private boolean mIsConstantSpaceRelocalize = false;
     private TangoPoseData currentPose;
     private final Object mSharedLock = new Object();
     private TextView poseDataTextView;
@@ -76,8 +71,6 @@ public class NetworkControlActivity extends Activity {
 
     private SafePath safePath;
 
-    private boolean goToLandmarkOne = false;
-    private boolean goToLandmarkTwo = false;
     private boolean goToLandmarkByName = false;
     private boolean driftCorrectionMode = false;
     private boolean equalizingRotationsMode = false;
@@ -262,7 +255,11 @@ public class NetworkControlActivity extends Activity {
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            mIsRelocalized = true;
+                            if (!mIsRelocalized) {
+                                mIsRelocalized = true;
+                                sendSpeakString("Localized");
+                            }
+
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -291,73 +288,11 @@ public class NetworkControlActivity extends Activity {
                             }
 
                             else if (equalizingRotationsMode) {
-                                if (goToLandmarkOne) {
-                                    equalizeRotations(pose, landmarkOneTarget);
-                                } else if (goToLandmarkTwo) {
-                                    equalizeRotations(pose, landmarkTwoTarget);
-                                } else if (goToLandmarkByName) {
-                                    equalizeRotations(pose, currentTargetLandmark);
-                                }
+                                equalizeRotations(pose, currentTargetLandmark);
                             }
 
                             else if (goToLandmarkByName) {
                                 goToTargetLandmark(pose, currentTargetLandmark);
-                            }
-
-                            else if (goToLandmarkOne) {
-                                // Throttle pose updates by a tenth of a second
-                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                                    if (safePathRecorded) {
-                                        double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
-                                        double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
-
-                                        if (distanceFromSafePath > 0.075) {
-                                            sendSpeakString("Entering drift correction mode");
-                                            driftCorrectionMode = true;
-                                            return;
-                                        }
-                                    }
-
-                                    navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, roundLocation(landmarkOneTarget.getTargetLocation()));
-                                    sendRobotCommand(navigationInfo.getCommand());
-
-                                    if (navigationInfo.getCommand() == 's') {
-                                        goToLandmarkOne = false;
-                                        equalizingRotationsMode = true;
-                                    }
-
-                                    updateTextViews(pose, navigationInfo);
-                                    lastUpdateTime = System.currentTimeMillis();
-                                }
-                            }
-
-                            else if (goToLandmarkTwo) {
-                                // Throttle pose updates by a tenth of a second
-                                if (System.currentTimeMillis() - lastUpdateTime > 100) {
-
-                                    if (safePathRecorded) {
-                                        double[] closestSafePathPoint = roundLocation(safePath.getClosestSafePathPoint(ourLocation));
-                                        double distanceFromSafePath = navigationLogic.getDistance(ourLocation, closestSafePathPoint);
-
-                                        if (distanceFromSafePath > 0.075) {
-                                            sendSpeakString("Entering drift correction mode");
-                                            driftCorrectionMode = true;
-                                            return;
-                                        }
-                                    }
-
-                                    navigationInfo = navigationLogic.navigationInfo(ourLocation, pose.rotation, roundLocation(landmarkTwoTarget.getTargetLocation()));
-                                    sendRobotCommand(navigationInfo.getCommand());
-
-                                    if (navigationInfo.getCommand() == 's') {
-                                        goToLandmarkTwo = false;
-                                        sendSpeakString("Engaging target two");
-                                    }
-
-                                    updateTextViews(pose, navigationInfo);
-                                    lastUpdateTime = System.currentTimeMillis();
-                                }
                             }
                         }
                     }
@@ -569,12 +504,14 @@ public class NetworkControlActivity extends Activity {
                         // Create new tango config with learning mode on this time
                         mConfig = setTangoConfig(mTango, true, false);
                         onResume();
+                        sendSpeakString("Recording an ADF");
                     }
 
                     else if (read.contains("adfSave")) {
                         if (mConfig.getBoolean(TangoConfig.KEY_BOOLEAN_LEARNINGMODE)) {
                             String adfName = read.split(" ")[1];
                             saveAdf(adfName);
+                            sendSpeakString("ADF saved");
                         }
                     }
 
@@ -585,6 +522,7 @@ public class NetworkControlActivity extends Activity {
                         // Create new tango config and set load adf to true
                         mConfig = setTangoConfig(mTango, false, true);
                         onResume();
+                        sendSpeakString("ADF loaded");
                     }
 
                     else if (read.equals("startSafePathRecord")) {
@@ -601,40 +539,21 @@ public class NetworkControlActivity extends Activity {
 
                     else if (read.contains("save")) {
                         String commands[] = read.split(" ");
-
                         targetLocationsByName.put(commands[1], new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation)));
                         sendSpeakString("Target " + commands[1] + " recorded");
+                    }
 
-                        if (landmark1Name == null) {
-                            landmark1Name = commands[1];
-                            landmarkOneTarget = new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation));
-                            //sendSpeakString("Target 1 recorded");
-                        } else {
-                            landmark2Name = commands[1];
-                            landmarkTwoTarget = new TargetLocation(roundLocation(currentPose.translation), (int) getOurRotation(currentPose.rotation));
-                            //sendSpeakString("Target 2 recorded");
-                        }
-
-                    } else if (read.equals("goto1")) {
-                        goToLandmarkOne = true;
-                        goToLandmarkTwo = false;
-
-                    } else if (read.equals("goto2")) {
-                        goToLandmarkTwo = true;
-                        goToLandmarkOne = false;
-
-                    } else if (read.contains("goto")) {
+                    else if (read.contains("goto")) {
                         goToLandmarkByName = true;
-                        goToLandmarkOne = false;
-                        goToLandmarkTwo = false;
-
+                        sendSpeakString("Going to landmark");
                         String targetLandmarkName = read.split(" ")[1];
                         currentTargetLandmark = targetLocationsByName.get(targetLandmarkName);
 
                     } else if (read.equals("startAutonomous")) {
                         Intent autonomousControlIntent = new Intent(NetworkControlActivity.this, AutonomousControlActivity.class);
-                        autonomousControlIntent.putExtra("LANDMARKS", targetLocationsByName);
-                        autonomousControlIntent.putExtra("SAFE_PATH", safePath);
+                        CourseInfo courseInfo = new CourseInfo(safePath, targetLocationsByName);
+                        autonomousControlIntent.putExtra("COURSE_INFO", courseInfo);
+                        autonomousControlIntent.putExtra("ADF_TO_LOAD", adfToLoadName);
                         NetworkControlActivity.this.startActivity(autonomousControlIntent);
                     }
 
@@ -642,6 +561,10 @@ public class NetworkControlActivity extends Activity {
                         if (tangoSerialConnection != null) {
                             sendRobotCommand(read.charAt(0));
                             speakDirection(read.charAt(0));
+
+                            if (read.charAt(0) == 's') {
+                                goToLandmarkByName = false;
+                            }
                         }
                     }
                     updateConversationHandler.post(new updateUIThread(read));
@@ -686,7 +609,7 @@ public class NetworkControlActivity extends Activity {
 
         @Override
         public void run() {
-            mostRecentMessageTextView.setText(mostRecentMessageTextView.getText().toString()+"Client Says: "+ msg + "\n");
+            mostRecentMessageTextView.setText("Client Says: "+ msg);
         }
     }
 
