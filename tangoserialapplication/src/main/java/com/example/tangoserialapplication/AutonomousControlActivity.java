@@ -154,19 +154,19 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         ttsThread = new Thread(tts);
         ttsThread.start();
 
-//        ComponentName caller = getCallingActivity();
-//
-//        if (caller != null) {
-//            if (caller.getClass().getSimpleName().equals("NetworkControlActivity")) {
-//                courseInfo = (CourseInfo) getIntent().getSerializableExtra("COURSE_INFO");
-//                adfToLoadName = getIntent().getStringExtra("ADF_TO_LOAD");
-//            }
-//        }
-//
-//        if (courseInfo != null) {
-//            safePath = courseInfo.getSafePath();
-//            landmarks = courseInfo.getTargetLocationsByName();
-//        }
+        ComponentName caller = getCallingActivity();
+
+        if (caller != null) {
+            if (caller.getClass().getSimpleName().equals("NetworkControlActivity")) {
+                courseInfo = (CourseInfo) getIntent().getSerializableExtra("COURSE_INFO");
+                adfToLoadName = getIntent().getStringExtra("ADF_TO_LOAD");
+            }
+        }
+
+        if (courseInfo != null) {
+            safePath = courseInfo.getSafePath();
+            landmarks = courseInfo.getTargetLocationsByName();
+        }
 
         speech = SpeechRecognizer.createSpeechRecognizer(this);
         speech.setRecognitionListener(this);
@@ -323,6 +323,8 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
 
                             mIsRelocalized = true;
+                            sendSpeakString("Localized");
+
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {

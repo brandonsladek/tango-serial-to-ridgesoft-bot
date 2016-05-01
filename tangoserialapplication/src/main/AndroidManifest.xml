@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.tangoserialapplication">
+    package="com.example.tangoserialapplication"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-sdk android:minSdkVersion="12" />
+    <uses-sdk tools:overrideLibrary="com.projecttango.tangosupport"/>
+    <!--<uses-library android:name="com.projecttango.libtango_device" android:required="true" />-->
+
+    <!--<uses-sdk android:minSdkVersion="12" />-->
     <uses-feature android:name="android.hardware.usb.host" />
 
     <uses-permission android:name="android.permission.INTERNET"> </uses-permission>

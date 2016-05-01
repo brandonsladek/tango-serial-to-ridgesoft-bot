@@ -21,6 +21,7 @@ android {
 repositories {
     flatDir {
         dirs 'libs'
+        dirs 'libs/TangoReleaseLibs/aar'
     }
 }
 
@@ -30,6 +31,23 @@ dependencies {
     compile 'com.android.support:appcompat-v7:23.1.1'
     compile 'com.android.support:design:23.1.1'
     compile project(':usbSerialForAndroid')
+    compile 'org.rajawali3d:rajawali:1.0.294-SNAPSHOT@aar'
+    compile(name: 'tango_support_java_lib', ext: 'aar')
+}
+
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+
+    allprojects {
+        repositories {
+            maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+            jcenter()
+
+        }
+    }
 }
 
 // add in repositories libs
