@@ -1,10 +1,12 @@
 package com.example.tangoserialapplication;
 
+import java.io.Serializable;
+
 /**
  * Created by brandonsladek on 4/28/16.
  */
 
-public class TargetLocation {
+public class TargetLocation implements Serializable {
 
     private double x;
     private double y;

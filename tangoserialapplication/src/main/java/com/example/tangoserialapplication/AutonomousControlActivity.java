@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoAreaDescriptionMetaData;
+import com.google.atap.tangoservice.TangoCameraIntrinsics;
 import com.google.atap.tangoservice.TangoConfig;
 import com.google.atap.tangoservice.TangoCoordinateFramePair;
 import com.google.atap.tangoservice.TangoErrorException;
@@ -27,6 +28,8 @@ import com.google.atap.tangoservice.TangoInvalidException;
 import com.google.atap.tangoservice.TangoOutOfDateException;
 import com.google.atap.tangoservice.TangoPoseData;
 import com.google.atap.tangoservice.TangoXyzIjData;
+import com.projecttango.tangosupport.TangoPointCloudManager;
+import com.projecttango.tangosupport.TangoSupport;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -53,7 +56,9 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private boolean mIsRelocalized = false;
     private boolean mIsLearningMode = false;
     private boolean mIsConstantSpaceRelocalize = true;
-    private String adfToLoadName;
+
+    private boolean adfLoadSpecific = false;
+    private String adfToLoadName = "";
 
     private TextView poseDataTextView;
     private TextView adfUUIDTextView;
@@ -74,6 +79,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private Button followSafePathButton;
     private Button viewSafePathButton;
     private Button deleteSafePathButton;
+    private Button viewDepthPointsButton;
 
     private boolean driftCorrectionMode = false;
     private boolean equalizingRotationsMode = false;
@@ -95,6 +101,11 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
     private NavigationInfo navigationInfo;
     private CourseInfo courseInfo;
+
+    private TangoPointCloudManager mPointCloudManager;
+    private TangoCameraIntrinsics mIntrinsics;
+    private double mLatestRgbTimestamp;
+    private float[] depthPoints = new float[10];
 
     Long lastUpdateTime;
 
@@ -130,6 +141,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         followSafePathButton = (Button) findViewById(R.id.ac_followSafePathButton);
         viewSafePathButton = (Button) findViewById(R.id.ac_viewSafePathButton);
         deleteSafePathButton = (Button) findViewById(R.id.ac_deleteSafePathButton);
+        viewDepthPointsButton = (Button) findViewById(R.id.ac_viewDepthPointsButton);
 
         saveLandmarkOneButton.setOnClickListener(this);
         saveLandmarkTwoButton.setOnClickListener(this);
@@ -141,6 +153,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         followSafePathButton.setOnClickListener(this);
         viewSafePathButton.setOnClickListener(this);
         deleteSafePathButton.setOnClickListener(this);
+        viewDepthPointsButton.setOnClickListener(this);
 
         // Start thread for usb serial connection
         tangoSerialConnection = TangoSerialConnection.getInstance();
@@ -154,20 +167,32 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         ttsThread = new Thread(tts);
         ttsThread.start();
 
-        ComponentName caller = getCallingActivity();
+        String caller = getIntent().getStringExtra("CALLING_ACTIVITY");
 
         if (caller != null) {
-            if (caller.getClass().getSimpleName().equals("NetworkControlActivity")) {
+            if (caller.equals("Network")) {
                 courseInfo = (CourseInfo) getIntent().getSerializableExtra("COURSE_INFO");
                 adfToLoadName = getIntent().getStringExtra("ADF_TO_LOAD");
+                adfLoadSpecific = true;
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adfUUIDTextView.setText(adfToLoadName);
+                    }
+                });
             }
         }
 
         if (courseInfo != null) {
             safePath = courseInfo.getSafePath();
+            safePathRecorded = true;
             landmarks = courseInfo.getTargetLocationsByName();
+        } else {
+            Toast.makeText(this, "CourseInfo NULL!", Toast.LENGTH_LONG).show();
         }
 
+        // Speech recognition stuff
         speech = SpeechRecognizer.createSpeechRecognizer(this);
         speech.setRecognitionListener(this);
         recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -179,7 +204,6 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                 RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
         recognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
 
-
         navigationLogic = new NavigationLogic();
 
         // Instantiate the Tango service
@@ -187,6 +211,8 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
         mIsRelocalized = false;
         mConfig = setTangoConfig(mTango, mIsLearningMode, mIsConstantSpaceRelocalize);
+
+        mPointCloudManager = new TangoPointCloudManager();
 
         lastUpdateTime = System.currentTimeMillis();
     }
@@ -229,27 +255,35 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
             // Returns a list of ADFs with their UUIDs
             fullUUIDList = tango.listAreaDescriptions();
 
-            // Load the ADF named bestAdf
-            if (fullUUIDList.size() > 0) {
+            if (adfLoadSpecific) {
+                // Load the ADF named bestAdf
+                if (fullUUIDList.size() > 0) {
 
-                int index = -1;
+                    int index = -1;
 
-                for (int i = 0; i < fullUUIDList.size(); i++) {
-                    if (getName(fullUUIDList.get(i)).equals("april15Adf")) {
-                        index = i;
+                    for (int i = 0; i < fullUUIDList.size(); i++) {
+                        if (getName(fullUUIDList.get(i)).equals(adfToLoadName)) {
+                            index = i;
+                        }
                     }
+                    config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                            fullUUIDList.get(index));
+
+                    final String adfName = getName(fullUUIDList.get(index));
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            adfUUIDTextView.setText("ADF Using: " + adfName);
+                        }
+                    });
                 }
-                config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
-                        fullUUIDList.get(index));
-
-                final String adfName = getName(fullUUIDList.get(index));
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        adfUUIDTextView.setText("ADF Using: " + adfName);
-                    }
-                });
+            } else {
+                // Load the most recent ADF
+                if (fullUUIDList.size() > 0) {
+                    config.putString(TangoConfig.KEY_STRING_AREADESCRIPTION,
+                            fullUUIDList.get(fullUUIDList.size() - 1));
+                }
             }
         }
         return config;
@@ -300,7 +334,9 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         mTango.connectListener(framePairs, new Tango.OnTangoUpdateListener() {
             @Override
             public void onXyzIjAvailable(TangoXyzIjData xyzIj) {
-
+                // Save the cloud and point data for later use.
+                mPointCloudManager.updateXyzIj(xyzIj);
+                mLatestRgbTimestamp = xyzIj.timestamp;
             }
 
             // Listen to Tango Events
@@ -322,8 +358,10 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                             && pose.targetFrame == TangoPoseData.COORDINATE_FRAME_START_OF_SERVICE) {
                         if (pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            mIsRelocalized = true;
-                            sendSpeakString("Localized");
+                            if (!mIsRelocalized) {
+                                mIsRelocalized = true;
+                                sendSpeakString("Localized");
+                            }
 
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -339,21 +377,21 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            //checkForCurrentTarget();
+                            depthPoints = doDepthPass();
 
                             currentPose = pose;
                             double[] ourLocation = roundLocation(pose.translation);
                             updateTextViews(pose, null);
 
+                            if (recordingSafePath) {
+                                safePoints.add(new SafePoint(ourLocation));
+                            }
+
                             if (driftCorrectionMode) {
                                 driftCorrectionMode(pose, ourLocation);
-                            }
-
-                            else if (equalizingRotationsMode) {
+                            } else if (equalizingRotationsMode) {
                                 equalizeRotations(pose, currentTargetLandmark);
-                            }
-
-                            else if (goToLandmarkByName) {
+                            } else if (goToLandmarkByName) {
                                 goToTargetLandmark(pose, currentTargetLandmark);
                             }
                         }
@@ -367,6 +405,74 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
             }
         });
 
+        mIntrinsics = mTango.getCameraIntrinsics(TangoCameraIntrinsics.TANGO_CAMERA_COLOR);
+    }
+
+    private float[] getDepthAtTouchPosition(float u, float v, double rgbTimestamp) {
+        TangoXyzIjData xyzIj = mPointCloudManager.getLatestXyzIj();
+
+        if (xyzIj == null) {
+            return null;
+        }
+
+        // We need to calculate the transform between the color camera at the
+        // time the user clicked and the depth camera at the time the depth
+        // cloud was acquired.
+        TangoPoseData colorTdepthPose = TangoSupport.calculateRelativePose(
+                rgbTimestamp, TangoPoseData.COORDINATE_FRAME_CAMERA_COLOR,
+                xyzIj.timestamp, TangoPoseData.COORDINATE_FRAME_CAMERA_DEPTH);
+
+        float[] point = TangoSupport.getDepthAtPointNearestNeighbor(xyzIj, mIntrinsics,
+                colorTdepthPose, u, v);
+
+        if (point == null) {
+            return null;
+        }
+
+        return point;
+    }
+
+    private float[] doDepthPass() {
+        float[] zValues = new float[10];
+        float v = 0.5f;
+        int globalCounter = 0;
+
+        for (float z = 0; z < 1; z+=0.1) {
+
+            float totalZ = 0.0f;
+            int numberNonNull = 0;
+
+            for (float u = z; u < z+0.1; u += 0.01) {
+                float[] point = getDepthAtTouchPosition(u, v, 0.0);
+                if (point != null) {
+                    totalZ += point[2];
+                    numberNonNull++;
+                }
+            }
+            float avg;
+            if (numberNonNull != 0) {
+                avg = totalZ / numberNonNull;
+            } else {
+                avg = -1;
+            }
+
+            zValues[globalCounter] = avg;
+            globalCounter++;
+        }
+        return zValues;
+    }
+
+    private void showDepthPoints(float[] depthPoints) {
+        String finalString = "";
+
+        for(int i = 0; i < 10; i++) {
+            if (depthPoints[i] != -1) {
+                finalString = finalString + depthPoints[i] + "\n";
+            } else {
+                finalString = finalString + "NULL\n";
+            }
+        }
+        Toast.makeText(this, finalString, Toast.LENGTH_LONG).show();
     }
 
     private void goToTargetLandmark(TangoPoseData pose, TargetLocation targetLandmark) {
@@ -597,6 +703,10 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                 sendSpeakString("Safe path deleted");
                 break;
 
+            case R.id.ac_viewDepthPointsButton:
+                showDepthPoints(depthPoints);
+                break;
+
             default:
                 break;
         }
@@ -636,7 +746,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     public void onResults(Bundle results) {
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
 
-        final String spokenText = matches.get(0);
+        final String spokenText = matches.get(0).toLowerCase();
 
         runOnUiThread(new Runnable() {
             @Override

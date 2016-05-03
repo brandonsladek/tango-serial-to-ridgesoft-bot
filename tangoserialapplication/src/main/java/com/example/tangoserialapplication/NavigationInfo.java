@@ -1,10 +1,12 @@
 package com.example.tangoserialapplication;
 
+import java.io.Serializable;
+
 /**
  * Created by brandonsladek on 4/23/16.
  */
 
-public class NavigationInfo {
+public class NavigationInfo implements Serializable {
 
     private int ourRotation;
     private int goRotation;

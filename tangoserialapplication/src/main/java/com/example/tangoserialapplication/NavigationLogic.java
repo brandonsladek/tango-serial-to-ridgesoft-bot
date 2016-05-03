@@ -1,10 +1,12 @@
 package com.example.tangoserialapplication;
 
+import java.io.Serializable;
+
 /**
  * Created by brandonsladek on 3/30/16.
  */
 
-public class NavigationLogic {
+public class NavigationLogic implements Serializable {
 
     public NavigationInfo navigationInfo(double[] translation, double[] rotation, double[] target) {
 

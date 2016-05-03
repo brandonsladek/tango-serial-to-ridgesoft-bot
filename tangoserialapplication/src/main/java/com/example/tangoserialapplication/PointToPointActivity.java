@@ -311,6 +311,8 @@ public class PointToPointActivity extends Activity implements View.OnTouchListen
     public boolean onTouch(View view, MotionEvent motionEvent) {
         if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
             // Calculate click location in u,v (0;1) coordinates.
+
+            // I want to use u to go all the way across the screen
             float u = motionEvent.getX() / view.getWidth();
             float v = motionEvent.getY() / view.getHeight();
 

@@ -129,9 +129,6 @@ public class NetworkControlActivity extends Activity {
         lastUpdateTime = System.currentTimeMillis();
     }
 
-    // All of the methods below this point are from the Google Project Tango area learning tutorials
-    // Some of the methods are modified.
-
     /**
      * Sets up the tango configuration object. Make sure mTango object is initialized before
      * making this call.
@@ -548,12 +545,14 @@ public class NetworkControlActivity extends Activity {
                         sendSpeakString("Going to landmark");
                         String targetLandmarkName = read.split(" ")[1];
                         currentTargetLandmark = targetLocationsByName.get(targetLandmarkName);
+                    }
 
-                    } else if (read.equals("startAutonomous")) {
+                    else if (read.equals("startAutonomous")) {
                         Intent autonomousControlIntent = new Intent(NetworkControlActivity.this, AutonomousControlActivity.class);
                         CourseInfo courseInfo = new CourseInfo(safePath, targetLocationsByName);
                         autonomousControlIntent.putExtra("COURSE_INFO", courseInfo);
                         autonomousControlIntent.putExtra("ADF_TO_LOAD", adfToLoadName);
+                        autonomousControlIntent.putExtra("CALLING_ACTIVITY", "Network");
                         NetworkControlActivity.this.startActivity(autonomousControlIntent);
                     }
 
@@ -574,7 +573,6 @@ public class NetworkControlActivity extends Activity {
                 }
             }
         }
-
     }
 
     private void saveAdf(final String name) {

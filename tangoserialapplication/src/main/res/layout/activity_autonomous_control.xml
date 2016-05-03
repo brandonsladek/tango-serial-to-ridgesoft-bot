@@ -141,7 +141,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Spoken Command"
-            android:id="@+id/ac_spokenCommandTextView" />
+            android:id="@+id/ac_spokenCommandTextView"
+            android:layout_marginRight="50dp"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Depth Points"
+            android:id="@+id/ac_viewDepthPointsButton"/>
 
     </LinearLayout>
 
