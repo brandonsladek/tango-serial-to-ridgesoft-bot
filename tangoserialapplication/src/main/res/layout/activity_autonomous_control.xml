@@ -150,6 +150,12 @@
             android:text="Depth Points"
             android:id="@+id/ac_viewDepthPointsButton"/>
 
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Resume"
+            android:id="@+id/ac_resumeButton"/>
+
     </LinearLayout>
 
     <TextView

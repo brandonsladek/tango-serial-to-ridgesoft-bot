@@ -1,9 +1,6 @@
 package com.example.tangoserialapplication;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
-import android.content.ComponentCallbacks;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.usb.UsbManager;
@@ -31,11 +28,8 @@ import com.google.atap.tangoservice.TangoXyzIjData;
 import com.projecttango.tangosupport.TangoPointCloudManager;
 import com.projecttango.tangosupport.TangoSupport;
 
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Locale;
 
 /** Brandon Sladek and John Waters */
 
@@ -80,6 +74,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private Button viewSafePathButton;
     private Button deleteSafePathButton;
     private Button viewDepthPointsButton;
+    private Button resumeButton;
 
     private boolean driftCorrectionMode = false;
     private boolean equalizingRotationsMode = false;
@@ -105,7 +100,14 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
     private TangoPointCloudManager mPointCloudManager;
     private TangoCameraIntrinsics mIntrinsics;
     private double mLatestRgbTimestamp;
-    private float[] depthPoints = new float[10];
+    private float[] thisPassDepthPoints = new float[10];
+    private float[] currentDepthValues = new float[10];
+    private int numberDepthPasses = 0;
+    ArrayList<DepthPass> depthPasses = new ArrayList<>();
+    private boolean obstacleDetected = false;
+    private boolean notified = false;
+
+    private boolean running = true;
 
     Long lastUpdateTime;
 
@@ -142,6 +144,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         viewSafePathButton = (Button) findViewById(R.id.ac_viewSafePathButton);
         deleteSafePathButton = (Button) findViewById(R.id.ac_deleteSafePathButton);
         viewDepthPointsButton = (Button) findViewById(R.id.ac_viewDepthPointsButton);
+        resumeButton = (Button) findViewById(R.id.ac_resumeButton);
 
         saveLandmarkOneButton.setOnClickListener(this);
         saveLandmarkTwoButton.setOnClickListener(this);
@@ -154,6 +157,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         viewSafePathButton.setOnClickListener(this);
         deleteSafePathButton.setOnClickListener(this);
         viewDepthPointsButton.setOnClickListener(this);
+        resumeButton.setOnClickListener(this);
 
         // Start thread for usb serial connection
         tangoSerialConnection = TangoSerialConnection.getInstance();
@@ -377,22 +381,47 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
                         if (mIsRelocalized && pose.statusCode == TangoPoseData.POSE_VALID) {
 
-                            depthPoints = doDepthPass();
+                            thisPassDepthPoints = doDepthPass();
+
+                            if (numberDepthPasses < 5) {
+                                DepthPass depthPass = new DepthPass(thisPassDepthPoints);
+                                depthPasses.add(depthPass);
+                                numberDepthPasses++;
+                            } else {
+                                currentDepthValues = setGlobalDepthValues();
+                                obstacleDetected = checkForObstacle();
+                                depthPasses.clear();
+                                DepthPass depthPass = new DepthPass(thisPassDepthPoints);
+                                depthPasses.add(depthPass);
+                                numberDepthPasses = 1;
+                            }
 
                             currentPose = pose;
                             double[] ourLocation = roundLocation(pose.translation);
                             updateTextViews(pose, null);
 
-                            if (recordingSafePath) {
-                                safePoints.add(new SafePoint(ourLocation));
-                            }
+                            if (!obstacleDetected && running) {
+                                if (recordingSafePath) {
+                                    safePoints.add(new SafePoint(ourLocation));
+                                }
 
-                            if (driftCorrectionMode) {
-                                driftCorrectionMode(pose, ourLocation);
-                            } else if (equalizingRotationsMode) {
-                                equalizeRotations(pose, currentTargetLandmark);
-                            } else if (goToLandmarkByName) {
-                                goToTargetLandmark(pose, currentTargetLandmark);
+                                if (driftCorrectionMode) {
+                                    driftCorrectionMode(pose, ourLocation);
+                                    running = true;
+                                } else if (equalizingRotationsMode) {
+                                    equalizeRotations(pose, currentTargetLandmark);
+                                    running = true;
+                                } else if (goToLandmarkByName) {
+                                    goToTargetLandmark(pose, currentTargetLandmark);
+                                    running = true;
+                                }
+                            } else {
+                                if (!notified) {
+                                    sendSpeakString("Obstacle detected");
+                                    sendRobotCommand('s');
+                                    running = false;
+                                    notified = true;
+                                }
                             }
                         }
                     }
@@ -466,13 +495,52 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
         String finalString = "";
 
         for(int i = 0; i < 10; i++) {
-            if (depthPoints[i] != -1) {
+            if (depthPoints[i] != -10) {
                 finalString = finalString + depthPoints[i] + "\n";
             } else {
                 finalString = finalString + "NULL\n";
             }
         }
         Toast.makeText(this, finalString, Toast.LENGTH_LONG).show();
+    }
+
+    private float[] setGlobalDepthValues() {
+        float[] finalDepthValues = new float[10];
+        int[] numNonNull = new int[10];
+
+        for (int i = 0; i < 5; i++) {
+
+            DepthPass pass = depthPasses.get(i);
+            float[] depthPass = pass.getDepthPass();
+
+            for (int j = 0; j < 10; j++) {
+
+                float zVal = depthPass[j];
+
+                if (zVal != -1) {
+                    numNonNull[i]++;
+                    finalDepthValues[i] += zVal;
+                }
+            }
+        }
+        for (int i = 0; i < 10; i++) {
+            if (numNonNull[i] != 0) {
+                finalDepthValues[i] = finalDepthValues[i] / numNonNull[i];
+            }
+        }
+        return finalDepthValues;
+    }
+
+    private boolean checkForObstacle() {
+        for (int i = 0; i < 10; i++) {
+
+            float zVal = currentDepthValues[i];
+
+            if (zVal != 0.0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void goToTargetLandmark(TangoPoseData pose, TargetLocation targetLandmark) {
@@ -533,6 +601,7 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
 
             if (command == 's') {
                 equalizingRotationsMode = false;
+                running = false;
                 sendSpeakString("Engaging target");
             }
 
@@ -704,7 +773,13 @@ public class AutonomousControlActivity extends Activity implements View.OnClickL
                 break;
 
             case R.id.ac_viewDepthPointsButton:
-                showDepthPoints(depthPoints);
+                showDepthPoints(currentDepthValues);
+                break;
+
+            case R.id.ac_resumeButton:
+                obstacleDetected = false;
+                notified = false;
+                running = true;
                 break;
 
             default:
